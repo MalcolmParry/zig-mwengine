@@ -1,7 +1,9 @@
 const Event = @import("../Event.zig");
 
 pub const Window = struct {
-    pub fn Create(width: u32, height: u32) !Window {
+    pub fn Create(class: []const u8, title: []const u8, width: u32, height: u32) !Window {
+        _ = class;
+        _ = title;
         _ = width;
         _ = height;
     }
