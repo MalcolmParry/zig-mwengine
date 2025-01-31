@@ -11,7 +11,7 @@ pub const Window = struct {
     window: c.Window,
     wmDeleteMessage: c.Atom,
 
-    pub fn Create(class: []const u8, title: []const u8, width: u32, height: u32) !Window {
+    pub fn Create(class: []const u8, width: u32, height: u32) !Window {
         var this: Window = undefined;
 
         this.display = c.XOpenDisplay(null) orelse return error.FailedToOpenDisplay;
@@ -27,13 +27,10 @@ pub const Window = struct {
         const ntClass = try std.heap.c_allocator.dupeZ(u8, class);
         defer std.heap.c_allocator.free(ntClass);
 
-        const ntTitle = try std.heap.c_allocator.dupeZ(u8, title);
-        defer std.heap.c_allocator.free(ntTitle);
-
         const classHint = c.XAllocClassHint();
         if (classHint == null) return error.OutOfMemory;
         defer _ = c.XFree(classHint);
-        classHint.*.res_name = ntTitle;
+        classHint.*.res_name = ntClass;
         classHint.*.res_class = ntClass;
         if (c.XSetClassHint(this.display, this.window, classHint) == 0) return error.FailedToSetWindowClass;
 
@@ -79,4 +76,11 @@ pub const Window = struct {
 
         return null;
     }
+};
+
+pub const Vulkan = struct {
+    pub const requiredExtentions: [2][*:0]const u8 = .{
+        "VK_KHR_surface",
+        "VK_KHR_xlib_surface",
+    };
 };
