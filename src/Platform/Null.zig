@@ -1,5 +1,9 @@
 const Event = @import("../Event.zig");
 
+const c = @cImport({
+    @cInclude("vulkan/vulkan.h");
+});
+
 pub const Window = struct {
     pub fn Create(class: []const u8, width: u32, height: u32) !Window {
         _ = class;
@@ -26,5 +30,16 @@ pub const Window = struct {
         _ = this;
 
         return null;
+    }
+};
+
+pub const Vulkan = struct {
+    pub const requiredExtentions: [0][*:0]const u8 = .{};
+
+    pub fn CreateSurface(window: *const Window, instance: c.VKInstance) !c.VkSurfaceKHR {
+        _ = window;
+        _ = instance;
+
+        return error.NullPlatform;
     }
 };

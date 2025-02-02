@@ -1,7 +1,10 @@
 const std = @import("std");
 const Event = @import("../Event.zig");
+const VK = @import("../RenderAPI/Vulkan.zig");
 
 const c = @cImport({
+    @cDefine("VK_USE_PLATFORM_XLIB_KHR", {});
+    @cInclude("vulkan/vulkan.h");
     @cInclude("X11/Xlib.h");
     @cInclude("X11/Xutil.h");
 });
@@ -83,4 +86,17 @@ pub const Vulkan = struct {
         "VK_KHR_surface",
         "VK_KHR_xlib_surface",
     };
+
+    pub fn CreateSurface(window: *const Window, instance: c.VKInstance) !c.VkSurfaceKHR {
+        var surface: c.VkSurfaceKHR = undefined;
+
+        const createInfo: c.VkXlibSurfaceCreateInfoKHR = .{
+            .sType = c.VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+            .dpy = window.display,
+            .window = window.window,
+        };
+
+        try VK.Try(c.vkCreateXlibSurfaceKHR(instance, &createInfo, null, &surface));
+        return surface;
+    }
 };
