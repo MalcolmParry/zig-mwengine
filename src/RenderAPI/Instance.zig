@@ -9,9 +9,9 @@ const validationExtentions: [1][*:0]const u8 = .{
     c.VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 };
 
-instance: c.VkInstance,
-debugMessenger: c.VkDebugUtilsMessengerEXT,
-physicalDevices: []Device.Physical,
+_instance: c.VkInstance,
+_debugMessenger: c.VkDebugUtilsMessengerEXT,
+_physicalDevices: []Device.Physical,
 
 //  TODO: add app version to paramerers
 pub fn Create(debugLogging: bool, alloc: std.mem.Allocator) !@This() {
@@ -38,8 +38,8 @@ pub fn Create(debugLogging: bool, alloc: std.mem.Allocator) !@This() {
         .ppEnabledLayerNames = if (debugLogging) &validationLayer else null,
     };
 
-    try VK.Try(c.vkCreateInstance(&instanceCreateInfo, null, &this.instance));
-    errdefer c.vkDestroyInstance(this.instance, null);
+    try VK.Try(c.vkCreateInstance(&instanceCreateInfo, null, &this._instance));
+    errdefer c.vkDestroyInstance(this._instance, null);
 
     if (debugLogging) {
         const debugMessengerCreateInfo: c.VkDebugUtilsMessengerCreateInfoEXT = .{
@@ -50,23 +50,23 @@ pub fn Create(debugLogging: bool, alloc: std.mem.Allocator) !@This() {
             .pUserData = null,
         };
 
-        try VK.Try(vkCreateDebugUtilsMessengerEXT(this.instance, &debugMessengerCreateInfo, null, &this.debugMessenger));
+        try VK.Try(vkCreateDebugUtilsMessengerEXT(this._instance, &debugMessengerCreateInfo, null, &this._debugMessenger));
     } else {
-        this.debugMessenger = null;
+        this._debugMessenger = null;
     }
 
-    errdefer if (debugLogging) vkDestroyDebugUtilsMessengerEXT(this.instance, this.debugMessenger, null);
+    errdefer if (debugLogging) vkDestroyDebugUtilsMessengerEXT(this._instance, this._debugMessenger, null);
 
     var deviceCount: u32 = 0;
-    try VK.Try(c.vkEnumeratePhysicalDevices(this.instance, &deviceCount, null));
+    try VK.Try(c.vkEnumeratePhysicalDevices(this._instance, &deviceCount, null));
     const nativePhysicalDevices = try alloc.alloc(c.VkPhysicalDevice, deviceCount);
     defer alloc.free(nativePhysicalDevices);
-    try VK.Try(c.vkEnumeratePhysicalDevices(this.instance, &deviceCount, nativePhysicalDevices.ptr));
-    this.physicalDevices = try alloc.alloc(Device.Physical, deviceCount);
-    errdefer alloc.free(this.physicalDevices);
+    try VK.Try(c.vkEnumeratePhysicalDevices(this._instance, &deviceCount, nativePhysicalDevices.ptr));
+    this._physicalDevices = try alloc.alloc(Device.Physical, deviceCount);
+    errdefer alloc.free(this._physicalDevices);
 
     for (0..deviceCount) |i| {
-        const device = &this.physicalDevices[i];
+        const device = &this._physicalDevices[i];
         device.device = nativePhysicalDevices[i];
 
         var queueFamilyCount: u32 = 0;
@@ -101,9 +101,9 @@ pub fn Create(debugLogging: bool, alloc: std.mem.Allocator) !@This() {
 }
 
 pub fn Destroy(this: *const @This(), alloc: std.mem.Allocator) void {
-    alloc.free(this.physicalDevices);
-    if (this.debugMessenger != null) vkDestroyDebugUtilsMessengerEXT(this.instance, this.debugMessenger, null);
-    c.vkDestroyInstance(this.instance, null);
+    alloc.free(this._physicalDevices);
+    if (this._debugMessenger != null) vkDestroyDebugUtilsMessengerEXT(this._instance, this._debugMessenger, null);
+    c.vkDestroyInstance(this._instance, null);
 }
 
 pub const CreateDevice = Device.Create;
@@ -113,7 +113,7 @@ pub fn BestPhysicalDevice(this: *const @This(), alloc: std.mem.Allocator) !Devic
 
     var bestDevice: ?Device.Physical = null;
     var bestScore: i32 = -1;
-    for (this.physicalDevices) |device| {
+    for (this._physicalDevices) |device| {
         var properties: c.VkPhysicalDeviceProperties = undefined;
         var features: c.VkPhysicalDeviceFeatures = undefined;
         c.vkGetPhysicalDeviceProperties(device.device, &properties);

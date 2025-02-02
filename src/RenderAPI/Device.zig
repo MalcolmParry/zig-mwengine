@@ -7,7 +7,7 @@ pub const Physical = struct {
     device: c.VkPhysicalDevice,
 };
 
-device: c.VkDevice,
+_device: c.VkDevice,
 
 pub fn Create(instance: *const Instance, physicalDevice: *const Physical, alloc: std.mem.Allocator) !@This() {
     _ = instance;
@@ -55,11 +55,11 @@ pub fn Create(instance: *const Instance, physicalDevice: *const Physical, alloc:
         .ppEnabledExtensionNames = &VK.requiredDeviceExtentions,
     };
 
-    try VK.Try(c.vkCreateDevice(physicalDevice.device, &createInfo, null, &this.device));
+    try VK.Try(c.vkCreateDevice(physicalDevice.device, &createInfo, null, &this._device));
 
     return this;
 }
 
 pub fn Destroy(this: *const @This()) void {
-    c.vkDestroyDevice(this.device, null);
+    c.vkDestroyDevice(this._device, null);
 }
