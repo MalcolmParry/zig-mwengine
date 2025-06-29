@@ -2,6 +2,7 @@ const std = @import("std");
 const VK = @import("Vulkan.zig");
 const Device = @import("Device.zig");
 const Platform = @import("../Platform.zig");
+const RenderPass = @import("RenderPass.zig");
 const c = VK.c;
 
 _device: *Device,
@@ -27,6 +28,10 @@ pub fn Create(device: *Device, window: *const Platform.Window, alloc: std.mem.Al
 pub fn Destroy(this: *const @This()) void {
     c.vkDestroySwapchainKHR(this._device._device, this._swapchain, null);
     c.vkDestroySurfaceKHR(this._device._instance._instance, this._surface, null);
+}
+
+pub fn CreateRenderPass(this: *const @This()) !RenderPass {
+    return RenderPass.Create(this);
 }
 
 fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
