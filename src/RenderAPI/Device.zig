@@ -1,33 +1,40 @@
 const std = @import("std");
 const VK = @import("Vulkan.zig");
 const Instance = @import("Instance.zig");
+const Display = @import("Display.zig");
 const c = VK.c;
 
 pub const Physical = struct {
-    device: c.VkPhysicalDevice,
+    _device: c.VkPhysicalDevice,
 };
 
+_instance: *const Instance,
+_physical: *const Physical,
 _device: c.VkDevice,
+_graphicsQueue: c.VkQueue,
+_graphicsQueueFamilyIndex: u32,
 
 pub fn Create(instance: *const Instance, physicalDevice: *const Physical, alloc: std.mem.Allocator) !@This() {
-    _ = instance;
-
     var this: @This() = undefined;
+    this._instance = instance;
+    this._physical = physicalDevice;
 
     var queueCreateInfo: c.VkDeviceQueueCreateInfo = undefined;
 
     top: {
         var queueFamilyCount: u32 = 0;
-        c.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice.device, &queueFamilyCount, null);
+        c.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice._device, &queueFamilyCount, null);
         const queueFamilies = try alloc.alloc(c.VkQueueFamilyProperties, queueFamilyCount);
         defer alloc.free(queueFamilies);
-        c.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice.device, &queueFamilyCount, queueFamilies.ptr);
+        c.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice._device, &queueFamilyCount, queueFamilies.ptr);
 
         const queuePriority: f32 = 1;
 
         var i: u32 = 0;
         for (queueFamilies) |prop| {
             if (prop.queueFlags & c.VK_QUEUE_GRAPHICS_BIT > 0) {
+                this._graphicsQueueFamilyIndex = i;
+
                 queueCreateInfo = .{
                     .sType = c.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                     .queueFamilyIndex = i,
@@ -55,7 +62,8 @@ pub fn Create(instance: *const Instance, physicalDevice: *const Physical, alloc:
         .ppEnabledExtensionNames = &VK.requiredDeviceExtentions,
     };
 
-    try VK.Try(c.vkCreateDevice(physicalDevice.device, &createInfo, null, &this._device));
+    try VK.Try(c.vkCreateDevice(physicalDevice._device, &createInfo, null, &this._device));
+    c.vkGetDeviceQueue(this._device, this._graphicsQueueFamilyIndex, 0, &this._graphicsQueue);
 
     return this;
 }
@@ -63,3 +71,5 @@ pub fn Create(instance: *const Instance, physicalDevice: *const Physical, alloc:
 pub fn Destroy(this: *const @This()) void {
     c.vkDestroyDevice(this._device, null);
 }
+
+pub const CreateDisplay = Display.Create;

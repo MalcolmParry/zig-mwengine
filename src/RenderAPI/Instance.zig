@@ -67,13 +67,13 @@ pub fn Create(debugLogging: bool, alloc: std.mem.Allocator) !@This() {
 
     for (0..deviceCount) |i| {
         const device = &this._physicalDevices[i];
-        device.device = nativePhysicalDevices[i];
+        device._device = nativePhysicalDevices[i];
 
         var queueFamilyCount: u32 = 0;
-        c.vkGetPhysicalDeviceQueueFamilyProperties(device.device, &queueFamilyCount, null);
+        c.vkGetPhysicalDeviceQueueFamilyProperties(device._device, &queueFamilyCount, null);
         const queueFamilies = try alloc.alloc(c.VkQueueFamilyProperties, queueFamilyCount);
         defer alloc.free(queueFamilies);
-        c.vkGetPhysicalDeviceQueueFamilyProperties(device.device, &queueFamilyCount, queueFamilies.ptr);
+        c.vkGetPhysicalDeviceQueueFamilyProperties(device._device, &queueFamilyCount, queueFamilies.ptr);
         std.debug.print("\n", .{});
 
         for (queueFamilies) |prop| {
@@ -116,8 +116,8 @@ pub fn BestPhysicalDevice(this: *const @This(), alloc: std.mem.Allocator) !Devic
     for (this._physicalDevices) |device| {
         var properties: c.VkPhysicalDeviceProperties = undefined;
         var features: c.VkPhysicalDeviceFeatures = undefined;
-        c.vkGetPhysicalDeviceProperties(device.device, &properties);
-        c.vkGetPhysicalDeviceFeatures(device.device, &features);
+        c.vkGetPhysicalDeviceProperties(device._device, &properties);
+        c.vkGetPhysicalDeviceFeatures(device._device, &features);
 
         var score: i32 = 0;
 

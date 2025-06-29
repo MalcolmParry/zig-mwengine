@@ -3,8 +3,6 @@ const Event = @import("../Event.zig");
 const VK = @import("../RenderAPI/Vulkan.zig");
 
 const c = @cImport({
-    @cDefine("VK_USE_PLATFORM_XLIB_KHR", {});
-    @cInclude("vulkan/vulkan.h");
     @cInclude("X11/Xlib.h");
     @cInclude("X11/Xutil.h");
 });
@@ -79,6 +77,15 @@ pub const Window = struct {
 
         return null;
     }
+
+    pub fn GetClientSize(this: *const Window) @Vector(2, u32) {
+        var width: u32 = undefined;
+        var height: u32 = undefined;
+
+        _ = c.XGetGeometry(this._display, this._window, null, null, null, &width, &height, null, null);
+
+        return @Vector(2, u32){ width, height };
+    }
 };
 
 pub const Vulkan = struct {
@@ -87,16 +94,16 @@ pub const Vulkan = struct {
         "VK_KHR_xlib_surface",
     };
 
-    pub fn CreateSurface(window: *const Window, instance: c.VKInstance) !c.VkSurfaceKHR {
-        var surface: c.VkSurfaceKHR = undefined;
+    pub fn CreateSurface(window: *const Window, instance: VK.c.VkInstance) !VK.c.VkSurfaceKHR {
+        var surface: VK.c.VkSurfaceKHR = undefined;
 
-        const createInfo: c.VkXlibSurfaceCreateInfoKHR = .{
-            .sType = c.VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
-            .dpy = window._display,
+        const createInfo: VK.c.VkXlibSurfaceCreateInfoKHR = .{
+            .sType = VK.c.VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+            .dpy = @ptrCast(window._display),
             .window = window._window,
         };
 
-        try VK.Try(c.vkCreateXlibSurfaceKHR(instance, &createInfo, null, &surface));
+        try VK.Try(VK.c.vkCreateXlibSurfaceKHR(instance, &createInfo, null, &surface));
         return surface;
     }
 };

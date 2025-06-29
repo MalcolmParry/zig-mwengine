@@ -1,7 +1,13 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const Platform = @import("../Platform.zig");
 
 pub const c = @cImport({
+    switch (builtin.os.tag) {
+        .linux => @cDefine("VK_USE_PLATFORM_XLIB_KHR", {}),
+        else => @compileError("platform not supported"),
+    }
+
     @cInclude("vulkan/vulkan.h");
 });
 
