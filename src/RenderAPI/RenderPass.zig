@@ -4,7 +4,7 @@ const Instance = @import("Instance.zig");
 const Display = @import("Display.zig");
 const c = VK.c;
 
-_display: Display,
+_display: *const Display,
 _renderPass: c.VkRenderPass,
 
 pub fn Create(display: *const Display) !@This() {
@@ -12,7 +12,7 @@ pub fn Create(display: *const Display) !@This() {
     this._display = display;
 
     const colorAttachment: c.VkAttachmentDescription = .{
-        .format = display._surfaceFormat,
+        .format = display._surfaceFormat.format,
         .samples = c.VK_SAMPLE_COUNT_1_BIT,
         .loadOp = c.VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = c.VK_ATTACHMENT_STORE_OP_STORE,
@@ -23,7 +23,7 @@ pub fn Create(display: *const Display) !@This() {
     };
 
     const depthAttachment: c.VkAttachmentDescription = .{
-        .format = 0, // todo
+        .format = try VK.Utils.GetDepthFormat(display._device._physical._device),
         .samples = c.VK_SAMPLE_COUNT_1_BIT,
         .loadOp = c.VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = c.VK_ATTACHMENT_STORE_OP_STORE,
@@ -63,7 +63,7 @@ pub fn Create(display: *const Display) !@This() {
     const renderPassInfo: c.VkRenderPassCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .attachmentCount = 2,
-        .pAttachments = attachments,
+        .pAttachments = &attachments,
         .subpassCount = 1,
         .pSubpasses = &subpassDesc,
         .dependencyCount = 1,
@@ -75,6 +75,6 @@ pub fn Create(display: *const Display) !@This() {
     return this;
 }
 
-pub fn Destroy(this: *@This()) void {
+pub fn Destroy(this: *const @This()) void {
     c.vkDestroyRenderPass(this._display._device._device, this._renderPass, null);
 }

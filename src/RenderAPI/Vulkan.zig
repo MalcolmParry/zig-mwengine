@@ -2,6 +2,8 @@ const std = @import("std");
 const builtin = @import("builtin");
 const Platform = @import("../Platform.zig");
 
+pub const Utils = @import("Utils.zig");
+
 pub const c = @cImport({
     switch (builtin.os.tag) {
         .linux => @cDefine("VK_USE_PLATFORM_XLIB_KHR", {}),
