@@ -4,12 +4,12 @@ const Instance = @import("Instance.zig");
 const Display = @import("Display.zig");
 const c = VK.c;
 
-_display: *const Display,
+display: *const Display,
 _renderPass: c.VkRenderPass,
 
 pub fn Create(display: *const Display) !@This() {
     var this: @This() = undefined;
-    this._display = display;
+    this.display = display;
 
     const colorAttachment: c.VkAttachmentDescription = .{
         .format = display._surfaceFormat.format,
@@ -23,7 +23,7 @@ pub fn Create(display: *const Display) !@This() {
     };
 
     const depthAttachment: c.VkAttachmentDescription = .{
-        .format = try VK.Utils.GetDepthFormat(display._device._physical._device),
+        .format = try VK.Utils.GetDepthFormat(display.device.physical._device),
         .samples = c.VK_SAMPLE_COUNT_1_BIT,
         .loadOp = c.VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = c.VK_ATTACHMENT_STORE_OP_STORE,
@@ -70,11 +70,11 @@ pub fn Create(display: *const Display) !@This() {
         .pDependencies = &subpassDep,
     };
 
-    try VK.Try(c.vkCreateRenderPass(display._device._device, &renderPassInfo, null, &this._renderPass));
+    try VK.Try(c.vkCreateRenderPass(display.device._device, &renderPassInfo, null, &this._renderPass));
 
     return this;
 }
 
 pub fn Destroy(this: *const @This()) void {
-    c.vkDestroyRenderPass(this._display._device._device, this._renderPass, null);
+    c.vkDestroyRenderPass(this.display.device._device, this._renderPass, null);
 }

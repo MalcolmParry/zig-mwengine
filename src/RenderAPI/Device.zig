@@ -2,22 +2,24 @@ const std = @import("std");
 const VK = @import("Vulkan.zig");
 const Instance = @import("Instance.zig");
 const Display = @import("Display.zig");
+const Buffer = @import("Buffer.zig");
 const c = VK.c;
 
 pub const Physical = struct {
     _device: c.VkPhysicalDevice,
 };
 
-_instance: *const Instance,
-_physical: *const Physical,
+instance: *const Instance,
+physical: *const Physical,
 _device: c.VkDevice,
 _graphicsQueue: c.VkQueue,
 _graphicsQueueFamilyIndex: u32,
+_commandPool: c.VkCommandPool,
 
 pub fn Create(instance: *const Instance, physicalDevice: *const Physical, alloc: std.mem.Allocator) !@This() {
     var this: @This() = undefined;
-    this._instance = instance;
-    this._physical = physicalDevice;
+    this.instance = instance;
+    this.physical = physicalDevice;
 
     var queueCreateInfo: c.VkDeviceQueueCreateInfo = undefined;
 
@@ -63,13 +65,24 @@ pub fn Create(instance: *const Instance, physicalDevice: *const Physical, alloc:
     };
 
     try VK.Try(c.vkCreateDevice(physicalDevice._device, &createInfo, null, &this._device));
+    errdefer c.vkDestroyDevice(this._device, null);
     c.vkGetDeviceQueue(this._device, this._graphicsQueueFamilyIndex, 0, &this._graphicsQueue);
+
+    const poolInfo: c.VkCommandPoolCreateInfo = .{
+        .sType = c.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = c.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = this._graphicsQueueFamilyIndex,
+    };
+
+    try VK.Try(c.vkCreateCommandPool(this._device, &poolInfo, null, &this._commandPool));
 
     return this;
 }
 
 pub fn Destroy(this: *const @This()) void {
+    c.vkDestroyCommandPool(this._device, this._commandPool, null);
     c.vkDestroyDevice(this._device, null);
 }
 
 pub const CreateDisplay = Display.Create;
+pub const CreateBuffer = Buffer.Create;
