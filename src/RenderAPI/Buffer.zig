@@ -60,7 +60,7 @@ pub fn SetData(this: *const @This(), data: []u8) !void {
     try this.UnmapData();
 }
 
-const BufferUsage = packed struct {
+const BufferUsage = struct {
     vertex: bool = false,
     index: bool = false,
     instance: bool = false,
