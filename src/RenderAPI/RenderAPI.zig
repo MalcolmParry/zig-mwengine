@@ -5,3 +5,4 @@ pub const Device = @import("Device.zig");
 pub const Display = @import("Display.zig");
 pub const RenderPass = @import("RenderPass.zig");
 pub const Buffer = @import("Buffer.zig");
+pub const Shader = @import("Shader.zig");
