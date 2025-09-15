@@ -1,6 +1,7 @@
 .{
-    .name = "mwengine",
+    .name = .mwengine,
     .version = "0.0.0",
+    .fingerprint = 0x5e693f885a0993ba,
     .paths = .{
         "build.zig",
         "build.zig.zon",
