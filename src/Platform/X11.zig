@@ -1,4 +1,5 @@
 const std = @import("std");
+const Profiler = @import("../Profiler.zig");
 const Event = @import("../Event.zig");
 const VK = @import("../RenderAPI/Vulkan.zig");
 
@@ -13,6 +14,9 @@ pub const Window = struct {
     _wmDeleteMessage: c.Atom,
 
     pub fn Create(class: []const u8, width: u32, height: u32) !Window {
+        var prof = Profiler.StartFuncProfiler(@src());
+        defer prof.Stop();
+
         var this: Window = undefined;
 
         this._display = c.XOpenDisplay(null) orelse return error.FailedToOpenDisplay;

@@ -1,4 +1,5 @@
 const std = @import("std");
+const Profiler = @import("../Profiler.zig");
 const VK = @import("Vulkan.zig");
 const Device = @import("Device.zig");
 const c = VK.c;
@@ -11,6 +12,9 @@ _stagingBuffer: c.VkBuffer,
 _stagingMemory: c.VkDeviceMemory,
 
 pub fn Create(device: *const Device, size: usize, usage: BufferUsage) !@This() {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     var this: @This() = undefined;
     this.device = device;
     this._size = size;
@@ -30,11 +34,17 @@ pub fn Create(device: *const Device, size: usize, usage: BufferUsage) !@This() {
 }
 
 pub fn Destroy(this: *const @This()) void {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     c.vkDestroyBuffer(this.device._device, this._buffer, null);
     c.vkFreeMemory(this.device._device, this._deviceMemory, null);
 }
 
 pub fn MapData(this: *const @This()) ![]u8 {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     if (this._stagingBuffer or this._stagingMemory)
         return error.AlreadyMapped;
 
@@ -46,6 +56,9 @@ pub fn MapData(this: *const @This()) ![]u8 {
 }
 
 pub fn UnmapData(this: *const @This()) !void {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     c.vkUnmapMemory(this.device._device, this._stagingMemory);
 
     VK.Utils.CopyBuffer(this.device._device, this._stagingBuffer, this._buffer, this._size, 0, 0);
@@ -55,6 +68,9 @@ pub fn UnmapData(this: *const @This()) !void {
 }
 
 pub fn SetData(this: *const @This(), data: []u8) !void {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     const map = try this.MapData();
     @memcpy(map, data);
     try this.UnmapData();

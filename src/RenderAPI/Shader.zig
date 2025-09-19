@@ -1,4 +1,5 @@
 const std = @import("std");
+const Profiler = @import("../Profiler.zig");
 const VK = @import("Vulkan.zig");
 const Device = @import("Device.zig");
 const c = VK.c;
@@ -10,6 +11,9 @@ _shaderModule: c.VkShaderModule,
 _stage: c.VkShaderStageFlags,
 
 pub fn Create(device: *const Device, stage: Stage, spirvByteCode: []const u32) !@This() {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     var this: @This() = undefined;
     this.device = device;
     this._stage = switch (stage) {
@@ -29,6 +33,9 @@ pub fn Create(device: *const Device, stage: Stage, spirvByteCode: []const u32) !
 }
 
 pub fn Destroy(this: *@This()) void {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     c.vkDestroyShaderModule(this.device._device, this._shaderModule, null);
 }
 

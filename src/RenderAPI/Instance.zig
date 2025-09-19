@@ -1,4 +1,5 @@
 const std = @import("std");
+const Profiler = @import("../Profiler.zig");
 const Platform = @import("../Platform.zig");
 const VK = @import("Vulkan.zig");
 const Device = @import("Device.zig");
@@ -15,6 +16,9 @@ _physicalDevices: []Device.Physical,
 
 //  TODO: add app version to paramerers
 pub fn Create(debugLogging: bool, alloc: std.mem.Allocator) !@This() {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     var this: @This() = undefined;
 
     const appInfo: c.VkApplicationInfo = .{
@@ -101,6 +105,9 @@ pub fn Create(debugLogging: bool, alloc: std.mem.Allocator) !@This() {
 }
 
 pub fn Destroy(this: *@This(), alloc: std.mem.Allocator) void {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     alloc.free(this._physicalDevices);
     if (this._debugMessenger != null) vkDestroyDebugUtilsMessengerEXT(this._instance, this._debugMessenger, null);
     c.vkDestroyInstance(this._instance, null);
@@ -109,6 +116,9 @@ pub fn Destroy(this: *@This(), alloc: std.mem.Allocator) void {
 pub const CreateDevice = Device.Create;
 
 pub fn BestPhysicalDevice(this: *const @This(), alloc: std.mem.Allocator) !Device.Physical {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     _ = alloc;
 
     var bestDevice: ?Device.Physical = null;

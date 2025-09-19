@@ -1,4 +1,5 @@
 const std = @import("std");
+const Profiler = @import("../Profiler.zig");
 const VK = @import("Vulkan.zig");
 const Instance = @import("Instance.zig");
 const Display = @import("Display.zig");

@@ -25,6 +25,10 @@ pub fn main() !void {
     const alloc = gpa.allocator();
     defer _ = gpa.deinit();
 
+    var profiler = try mw.Profiler.Create("Start", "mwengine-profile-start.json", alloc);
+    defer profiler.Destroy() catch @panic("error from profiler");
+    mw.Profiler.global = &profiler;
+
     window = try mw.Window.Create("TEST", 480, 340);
     try window.SetTitle("TEST");
     defer window.Destroy();

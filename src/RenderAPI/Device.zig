@@ -1,4 +1,5 @@
 const std = @import("std");
+const Profiler = @import("../Profiler.zig");
 const VK = @import("Vulkan.zig");
 const Instance = @import("Instance.zig");
 const Display = @import("Display.zig");
@@ -17,6 +18,9 @@ _graphicsQueueFamilyIndex: u32,
 _commandPool: c.VkCommandPool,
 
 pub fn Create(instance: *const Instance, physicalDevice: *const Physical, alloc: std.mem.Allocator) !@This() {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     var this: @This() = undefined;
     this.instance = instance;
     this.physical = physicalDevice;
@@ -80,6 +84,9 @@ pub fn Create(instance: *const Instance, physicalDevice: *const Physical, alloc:
 }
 
 pub fn Destroy(this: *@This()) void {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     c.vkDestroyCommandPool(this._device, this._commandPool, null);
     c.vkDestroyDevice(this._device, null);
 }

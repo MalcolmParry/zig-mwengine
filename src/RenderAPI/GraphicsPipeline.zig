@@ -1,4 +1,5 @@
 const std = @import("std");
+const Profiler = @import("../Profiler.zig");
 const VK = @import("Vulkan.zig");
 const Device = @import("Device.zig");
 const RenderPass = @import("RenderPass.zig");
@@ -12,6 +13,9 @@ _pipeline: c.VkPipeline,
 _pipelineLayout: c.VkPipelineLayout,
 
 pub fn Create(createInfo: CreateInfo) !@This() {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     var this: @This() = undefined;
     this.device = createInfo.device;
 
@@ -179,6 +183,9 @@ pub fn Create(createInfo: CreateInfo) !@This() {
 }
 
 pub fn Destroy(this: *@This()) void {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     c.vkDestroyPipeline(this.device._device, this._pipeline, null);
     c.vkDestroyPipelineLayout(this.device._device, this._pipelineLayout, null);
 }

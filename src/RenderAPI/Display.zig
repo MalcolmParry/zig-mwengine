@@ -1,4 +1,5 @@
 const std = @import("std");
+const Profiler = @import("../Profiler.zig");
 const VK = @import("Vulkan.zig");
 const Device = @import("Device.zig");
 const Platform = @import("../Platform.zig");
@@ -26,11 +27,17 @@ pub fn Create(device: *Device, window: *Platform.Window, alloc: std.mem.Allocato
 }
 
 pub fn Destroy(this: *@This()) void {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     c.vkDestroySwapchainKHR(this.device._device, this._swapchain, null);
     c.vkDestroySurfaceKHR(this.device.instance._instance, this._surface, null);
 }
 
 fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
+    var prof = Profiler.StartFuncProfiler(@src());
+    defer prof.Stop();
+
     const oldSwapchain: c.VkSwapchainKHR = this._swapchain;
 
     var capabilities: c.VkSurfaceCapabilitiesKHR = undefined;
