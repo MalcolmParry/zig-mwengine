@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
@@ -23,7 +24,10 @@ pub fn build(b: *std.Build) !void {
     });
 
     // build shaders
-    const compileShaderStep = b.addSystemCommand(&.{"./scripts/compile-shaders.sh"});
+    const compileShaderStep = switch (builtin.os.tag) {
+        .linux => b.addSystemCommand(&.{"./scripts/compile-shaders.sh"}),
+        else => @compileError("only building on linux is supported"),
+    };
 
     // build the test exe
     exe.root_module.addImport("mwengine", module);
