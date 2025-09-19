@@ -47,6 +47,9 @@ pub const Window = struct {
     }
 
     pub fn Destroy(this: *Window) void {
+        var prof = Profiler.StartFuncProfiler(@src());
+        defer prof.Stop();
+
         _ = c.XDestroyWindow(this._display, this._window);
         _ = c.XCloseDisplay(this._display);
     }
