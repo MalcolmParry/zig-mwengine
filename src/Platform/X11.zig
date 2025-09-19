@@ -42,12 +42,12 @@ pub const Window = struct {
         return this;
     }
 
-    pub fn Destroy(this: *const Window) void {
+    pub fn Destroy(this: *Window) void {
         _ = c.XDestroyWindow(this._display, this._window);
         _ = c.XCloseDisplay(this._display);
     }
 
-    pub fn SetTitle(this: *const Window, title: []const u8) !void {
+    pub fn SetTitle(this: *Window, title: []const u8) !void {
         const alloc = std.heap.c_allocator;
         const titleC = try alloc.dupeZ(u8, title);
         defer alloc.free(titleC);
@@ -60,7 +60,7 @@ pub const Window = struct {
         return c.XPending(this._display) != 0;
     }
 
-    pub fn PopEvent(this: *const Window) ?Event.Event {
+    pub fn PopEvent(this: *Window) ?Event.Event {
         if (c.XPending(this._display) == 0)
             return null;
 
@@ -94,7 +94,7 @@ pub const Vulkan = struct {
         "VK_KHR_xlib_surface",
     };
 
-    pub fn CreateSurface(window: *const Window, instance: VK.c.VkInstance) !VK.c.VkSurfaceKHR {
+    pub fn CreateSurface(window: *Window, instance: VK.c.VkInstance) !VK.c.VkSurfaceKHR {
         var surface: VK.c.VkSurfaceKHR = undefined;
 
         const createInfo: VK.c.VkXlibSurfaceCreateInfoKHR = .{

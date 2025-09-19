@@ -11,7 +11,7 @@ _surface: c.VkSurfaceKHR,
 _surfaceFormat: c.VkSurfaceFormatKHR,
 _swapchain: c.VkSwapchainKHR,
 
-pub fn Create(device: *Device, window: *const Platform.Window, alloc: std.mem.Allocator) !@This() {
+pub fn Create(device: *Device, window: *Platform.Window, alloc: std.mem.Allocator) !@This() {
     var this: @This() = undefined;
     this.device = device;
     this.window = window;
