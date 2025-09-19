@@ -100,7 +100,7 @@ pub fn Create(debugLogging: bool, alloc: std.mem.Allocator) !@This() {
     return this;
 }
 
-pub fn Destroy(this: *const @This(), alloc: std.mem.Allocator) void {
+pub fn Destroy(this: *@This(), alloc: std.mem.Allocator) void {
     alloc.free(this._physicalDevices);
     if (this._debugMessenger != null) vkDestroyDebugUtilsMessengerEXT(this._instance, this._debugMessenger, null);
     c.vkDestroyInstance(this._instance, null);

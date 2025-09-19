@@ -75,6 +75,6 @@ pub fn Create(display: *const Display) !@This() {
     return this;
 }
 
-pub fn Destroy(this: *const @This()) void {
+pub fn Destroy(this: *@This()) void {
     c.vkDestroyRenderPass(this.display.device._device, this._renderPass, null);
 }

@@ -29,23 +29,46 @@ pub fn main() !void {
     try window.SetTitle("TEST");
     defer window.Destroy();
 
-    const instance = try mw.Instance.Create(true, alloc);
+    var instance = try mw.Instance.Create(true, alloc);
     defer instance.Destroy(alloc);
 
     const physicalDevice = try instance.BestPhysicalDevice(alloc);
     var device = try instance.CreateDevice(&physicalDevice, alloc);
     defer device.Destroy();
 
-    const display = try device.CreateDisplay(&window, alloc);
+    var display = try device.CreateDisplay(&window, alloc);
     defer display.Destroy();
 
-    const renderPass = try display.CreateRenderPass();
+    var renderPass = try display.CreateRenderPass();
     defer renderPass.Destroy();
 
     //const buffer = try device.CreateBuffer(16, .{ .vertex = true });
     //defer buffer.Destroy();
 
+    var vertexShader = try CreateShader(&device, "res/Shaders/Triangle.glsl.vert.spv", .Vertex, alloc);
+    defer vertexShader.Destroy();
+
+    var pixelShader = try CreateShader(&device, "res/Shaders/Triangle.glsl.frag.spv", .Pixel, alloc);
+    defer pixelShader.Destroy();
+
+    var shaderSet = try mw.Shader.Set.Create(vertexShader, pixelShader, &.{}, alloc);
+    defer shaderSet.Destroy();
+
     while (running) {
         EventHandler() catch {};
     }
+}
+
+fn CreateShader(device: *const mw.Device, filepath: []const u8, stage: mw.Shader.Stage, alloc: std.mem.Allocator) !mw.Shader {
+    const file = try std.fs.cwd().openFile(filepath, .{ .mode = .read_only });
+    defer file.close();
+
+    const fileSize = try file.getEndPos();
+    const buffer = try alloc.alloc(u32, std.mem.alignForward(u64, fileSize, @sizeOf(u32)) / @sizeOf(u32));
+    defer alloc.free(buffer);
+
+    const read = try file.readAll(std.mem.sliceAsBytes(buffer));
+    if (read != fileSize)
+        return error.CouldntReadShaderFile;
+    return mw.Shader.Create(device, stage, buffer);
 }

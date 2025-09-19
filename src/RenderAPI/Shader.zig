@@ -9,32 +9,52 @@ device: *const Device,
 _shaderModule: c.VkShaderModule,
 _stage: c.VkShaderStageFlags,
 
-pub fn Create(device: *const Device, stage: Stage, spirvByteCode: []const u8) !@This() {
+pub fn Create(device: *const Device, stage: Stage, spirvByteCode: []const u32) !@This() {
     var this: @This() = undefined;
     this.device = device;
     this._stage = switch (stage) {
-        .Vertex => .VK_SHADER_STAGE_VERTEX_BIT,
-        .Pixel => .VK_SHADER_STAGE_FRAGMENT_BIT,
+        .Vertex => c.VK_SHADER_STAGE_VERTEX_BIT,
+        .Pixel => c.VK_SHADER_STAGE_FRAGMENT_BIT,
     };
 
     const createInfo: c.VkShaderModuleCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = spirvByteCode.len,
+        .codeSize = spirvByteCode.len * @sizeOf(u32),
         .pCode = spirvByteCode.ptr,
     };
 
-    try VK.Try(c.vkCreateShaderModule(device._device, &createInfo, null, &this.shaderModule));
+    try VK.Try(c.vkCreateShaderModule(device._device, &createInfo, null, &this._shaderModule));
 
     return this;
 }
 
 pub fn Destroy(this: *@This()) void {
-    c.vkDestroyShaderModule(this.device._device, this.shaderModule, null);
+    c.vkDestroyShaderModule(this.device._device, this._shaderModule, null);
 }
 
 pub const Stage = enum {
     Vertex,
     Pixel,
+};
+
+pub const Set = struct {
+    vertex: Shader,
+    pixel: Shader,
+    _toVertex: []c.VkFormat,
+    alloc: std.mem.Allocator,
+
+    pub fn Create(vertex: Shader, pixel: Shader, toVertex: []const DataType, alloc: std.mem.Allocator) !@This() {
+        var this: @This() = undefined;
+        this.vertex = vertex;
+        this.pixel = pixel;
+        this._toVertex = try _ShaderDataTypeToVK(toVertex, alloc);
+        this.alloc = alloc;
+        return this;
+    }
+
+    pub fn Destroy(this: *@This()) void {
+        this.alloc.free(this._toVertex);
+    }
 };
 
 pub const DataType = enum {
@@ -51,7 +71,13 @@ pub const DataType = enum {
     U32Vec3,
     U32Vec4,
     I8,
+    I8Vec2,
+    I8Vec3,
+    I8Vec4,
     I16,
+    I16Vec2,
+    I16Vec3,
+    I16Vec4,
     I32,
     I32Vec2,
     I32Vec3,
@@ -81,7 +107,13 @@ pub const DataType = enum {
             .U64Vec3 => 24,
             .U64Vec4 => 32,
             .I8 => 1,
+            .I8Vec2 => 2,
+            .I8Vec3 => 3,
+            .I8Vec4 => 4,
             .I16 => 2,
+            .I16Vec2 => 4,
+            .I16Vec3 => 6,
+            .I16Vec4 => 8,
             .I32 => 4,
             .I32Vec2 => 8,
             .I32Vec3 => 12,
@@ -95,7 +127,7 @@ pub const DataType = enum {
     }
 };
 
-pub fn _ShaderDataTypeToVK(types: []DataType, alloc: std.mem.Allocator) ![]c.VkFormat {
+pub fn _ShaderDataTypeToVK(types: []const DataType, alloc: std.mem.Allocator) ![]c.VkFormat {
     var count: u32 = 0;
 
     for (types) |x| {

@@ -79,7 +79,7 @@ pub fn Create(instance: *const Instance, physicalDevice: *const Physical, alloc:
     return this;
 }
 
-pub fn Destroy(this: *const @This()) void {
+pub fn Destroy(this: *@This()) void {
     c.vkDestroyCommandPool(this._device, this._commandPool, null);
     c.vkDestroyDevice(this._device, null);
 }

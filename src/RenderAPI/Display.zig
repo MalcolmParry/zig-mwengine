@@ -25,7 +25,7 @@ pub fn Create(device: *Device, window: *const Platform.Window, alloc: std.mem.Al
     return this;
 }
 
-pub fn Destroy(this: *const @This()) void {
+pub fn Destroy(this: *@This()) void {
     c.vkDestroySwapchainKHR(this.device._device, this._swapchain, null);
     c.vkDestroySurfaceKHR(this.device.instance._instance, this._surface, null);
 }
