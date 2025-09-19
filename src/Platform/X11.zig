@@ -79,10 +79,15 @@ pub const Window = struct {
     }
 
     pub fn GetClientSize(this: *const Window) @Vector(2, u32) {
-        var width: u32 = undefined;
-        var height: u32 = undefined;
+        var root: c.Window = undefined;
+        var x: c_int = undefined;
+        var y: c_int = undefined;
+        var width: c_uint = undefined;
+        var height: c_uint = undefined;
+        var border: c_uint = undefined;
+        var depth: c_uint = undefined;
 
-        _ = c.XGetGeometry(this._display, this._window, null, null, null, &width, &height, null, null);
+        _ = c.XGetGeometry(this._display, this._window, &root, &x, &y, &width, &height, &border, &depth);
 
         return @Vector(2, u32){ width, height };
     }

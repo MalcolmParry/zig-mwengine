@@ -40,20 +40,24 @@ pub const Stage = enum {
 pub const Set = struct {
     vertex: Shader,
     pixel: Shader,
-    _toVertex: []c.VkFormat,
+    _perVertex: []c.VkFormat,
     alloc: std.mem.Allocator,
 
-    pub fn Create(vertex: Shader, pixel: Shader, toVertex: []const DataType, alloc: std.mem.Allocator) !@This() {
+    pub fn Create(vertex: Shader, pixel: Shader, perVertex: []const DataType, alloc: std.mem.Allocator) !@This() {
         var this: @This() = undefined;
+        std.debug.assert(vertex._stage == c.VK_SHADER_STAGE_VERTEX_BIT);
+        std.debug.assert(pixel._stage == c.VK_SHADER_STAGE_FRAGMENT_BIT);
+
         this.vertex = vertex;
         this.pixel = pixel;
-        this._toVertex = try _ShaderDataTypeToVK(toVertex, alloc);
+        this._perVertex = try _ShaderDataTypeToVK(perVertex, alloc);
         this.alloc = alloc;
+
         return this;
     }
 
     pub fn Destroy(this: *@This()) void {
-        this.alloc.free(this._toVertex);
+        this.alloc.free(this._perVertex);
     }
 };
 

@@ -54,6 +54,17 @@ pub fn main() !void {
     var shaderSet = try mw.Shader.Set.Create(vertexShader, pixelShader, &.{}, alloc);
     defer shaderSet.Destroy();
 
+    const graphicsPipelineCreateInfo: mw.GraphicsPipeline.CreateInfo = .{
+        .oldGraphicsPipeline = null,
+        .device = &device,
+        .renderPass = &renderPass,
+        .shaderSet = &shaderSet,
+        .framebufferSize = window.GetClientSize(),
+    };
+
+    var graphicsPipeline = try mw.GraphicsPipeline.Create(graphicsPipelineCreateInfo);
+    defer graphicsPipeline.Destroy();
+
     while (running) {
         EventHandler() catch {};
     }
