@@ -67,7 +67,7 @@ pub const Window = struct {
         return c.XPending(this._display) != 0;
     }
 
-    pub fn PopEvent(this: *Window) ?Event.Event {
+    pub fn PopEvent(this: *Window) ?Event {
         if (c.XPending(this._display) == 0)
             return null;
 
@@ -77,7 +77,7 @@ pub const Window = struct {
         switch (event.type) {
             c.ClientMessage => {
                 if (event.xclient.data.l[0] == this._wmDeleteMessage)
-                    return .{ .type = Event.Event.Type.Closed };
+                    return .{ .type = Event.Type.Closed };
             },
             else => {},
         }
