@@ -42,7 +42,7 @@ pub fn WriteProfile(this: *@This(), profileResult: ProfileResult) !void {
     _ = try this.outputFile.write("{");
     try this.outputFile.writer().print(
         \\"cat":"function","dur":{},"name":"{s}","ph":"X","pid":0,"tid":{},"ts":{}
-    , .{ profileResult.end.since(profileResult.start) / 1000, profileResult.name, profileResult.threadId, profileResult.start.since(this.start) / 1000 });
+    , .{ profileResult.end.since(profileResult.start) / std.time.ns_per_us, profileResult.name, profileResult.threadId, profileResult.start.since(this.start) / std.time.ns_per_us });
     _ = try this.outputFile.write("}");
 
     try this.outputFile.sync();
