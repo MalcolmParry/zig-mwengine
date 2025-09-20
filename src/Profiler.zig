@@ -1,4 +1,5 @@
 const std = @import("std");
+const buildOptions = @import("build-options");
 
 pub var global: ?*@This() = null;
 
@@ -77,6 +78,15 @@ pub const Timed = struct {
     }
 };
 
-pub fn StartFuncProfiler(comptime src: std.builtin.SourceLocation) Timed {
+const Blank = struct {
+    pub fn Stop(_: @This()) void {}
+};
+
+const FuncProfiler = if (buildOptions.profiling) Timed else Blank;
+
+pub fn StartFuncProfiler(comptime src: std.builtin.SourceLocation) FuncProfiler {
+    if (comptime !buildOptions.profiling)
+        return Blank{};
+
     return Timed.Start(global.?, src.fn_name ++ " from " ++ src.file, std.Thread.getCurrentId()) catch @panic("error in profiler");
 }

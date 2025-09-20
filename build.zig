@@ -4,6 +4,12 @@ const builtin = @import("builtin");
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+
+    const profiling = b.option(bool, "profiling", "Enable profiling") orelse (optimize == .Debug);
+
+    const opts = b.addOptions();
+    opts.addOption(bool, "profiling", profiling);
+
     const module = b.addModule("mwengine", .{
         .root_source_file = b.path("src/Root.zig"),
         .target = target,
@@ -11,6 +17,7 @@ pub fn build(b: *std.Build) !void {
         .link_libc = true,
     });
 
+    module.addOptions("build-options", opts);
     module.linkSystemLibrary("X11", .{});
     module.linkSystemLibrary("vulkan", .{});
 
