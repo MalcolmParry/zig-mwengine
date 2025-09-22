@@ -1,4 +1,4 @@
 .zig-cache
 zig-out
 Test/res/Shaders
-Test/mwengine-profile-start.json
+Test/profiler.json

@@ -3,50 +3,55 @@ const buildOptions = @import("build-options");
 
 pub var global: ?*@This() = null;
 
-name: []const u8,
-outputFile: std.fs.File,
-profileCount: u32,
+profiles: std.array_list.Managed(ProfileResult),
 start: std.time.Instant,
 alloc: std.mem.Allocator,
 
 const Profiler = @This();
 
-pub fn Create(name: []const u8, filepath: []const u8, alloc: std.mem.Allocator) !@This() {
+pub fn Create(alloc: std.mem.Allocator) !@This() {
     var this: @This() = undefined;
-    this.name = name;
-    this.profileCount = 0;
     this.alloc = alloc;
     this.start = try std.time.Instant.now();
-    this.outputFile = try std.fs.cwd().createFile(filepath, .{ .truncate = true });
-    _ = try this.outputFile.write("{\"otherData\": {},\"traceEvents\":[");
-    try this.outputFile.sync();
+    this.profiles = try .initCapacity(alloc, 50);
 
     return this;
 }
 
-pub fn Destroy(this: *@This()) !void {
-    defer this.outputFile.close();
-
-    _ = try this.outputFile.write("]}");
-    try this.outputFile.sync();
+pub fn Destroy(this: *@This()) void {
+    this.profiles.deinit();
 }
 
 pub fn WriteProfile(this: *@This(), profileResult: ProfileResult) !void {
-    if (this.profileCount > 0)
-        _ = try this.outputFile.write(",");
+    try this.profiles.append(profileResult);
+}
 
-    this.profileCount += 1;
-    const newName = try this.alloc.dupe(u8, profileResult.name);
-    defer this.alloc.free(newName);
-    _ = std.mem.replaceScalar(u8, newName, '"', '\'');
+pub fn WriteToFile(this: *@This(), filepath: []const u8) !void {
+    const file = try std.fs.cwd().createFile(filepath, .{ .truncate = true });
+    defer file.close();
 
-    _ = try this.outputFile.write("{");
-    try this.outputFile.writer().print(
-        \\"cat":"function","dur":{},"name":"{s}","ph":"X","pid":0,"tid":{},"ts":{}
-    , .{ profileResult.end.since(profileResult.start) / std.time.ns_per_us, profileResult.name, profileResult.threadId, profileResult.start.since(this.start) / std.time.ns_per_us });
-    _ = try this.outputFile.write("}");
+    const buffer = try this.alloc.alloc(u8, 1024 * 8);
+    defer this.alloc.free(buffer);
+    var fileWriter = file.writer(buffer);
+    var writer = &fileWriter.interface;
+    defer writer.flush() catch {};
 
-    try this.outputFile.sync();
+    _ = try writer.write("{\"otherData\": {},\"traceEvents\":[");
+
+    for (this.profiles.items, 0..) |*profile, i| {
+        if (i > 0)
+            try writer.print(",", .{});
+
+        const newName = try this.alloc.dupe(u8, profile.name);
+        defer this.alloc.free(newName);
+        _ = std.mem.replaceScalar(u8, newName, '"', '\'');
+
+        try writer.print(
+            \\{{"cat":"function","dur":{},"name":"{s}","ph":"X","pid":0,"tid":{},"ts":{}}}
+        , .{ profile.end.since(profile.start) / std.time.ns_per_us, newName, profile.threadId, profile.start.since(this.start) / std.time.ns_per_us });
+    }
+
+    _ = try writer.write("]}");
 }
 
 const ProfileResult = struct {
@@ -84,9 +89,13 @@ const Blank = struct {
 
 const FuncProfiler = if (buildOptions.profiling) Timed else Blank;
 
+threadlocal var tid: ?std.Thread.Id = null;
+
 pub fn StartFuncProfiler(comptime src: std.builtin.SourceLocation) FuncProfiler {
     if (comptime !buildOptions.profiling)
         return Blank{};
 
-    return Timed.Start(global.?, src.fn_name ++ " from " ++ src.file, std.Thread.getCurrentId()) catch @panic("error in profiler");
+    tid = tid orelse std.Thread.getCurrentId();
+
+    return Timed.Start(global.?, src.fn_name ++ " from " ++ src.file, tid.?) catch @panic("error in profiler");
 }

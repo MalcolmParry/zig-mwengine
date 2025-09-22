@@ -1,8 +1,10 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const nullPlatform = @import("Platform/Null.zig");
-pub usingnamespace switch (builtin.os.tag) {
+const Platform = switch (builtin.os.tag) {
     .linux => @import("Platform/Linux.zig"),
-    else => nullPlatform,
+    else => @compileError("Platform not supported."),
 };
+
+pub const Window = Platform.Window;
+pub const Vulkan = Platform.Vulkan;

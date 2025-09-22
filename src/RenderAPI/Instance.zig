@@ -148,7 +148,7 @@ pub fn BestPhysicalDevice(this: *const @This(), alloc: std.mem.Allocator) !Devic
     return bestDevice orelse error.NoDeviceAvailable;
 }
 
-fn DebugMessengerCallback(messageSeverity: c.VkDebugUtilsMessageSeverityFlagBitsEXT, messageType: c.VkDebugUtilsMessageTypeFlagsEXT, callbackData: ?*const c.VkDebugUtilsMessengerCallbackDataEXT, userData: ?*anyopaque) callconv(.C) c.VkBool32 {
+fn DebugMessengerCallback(messageSeverity: c.VkDebugUtilsMessageSeverityFlagBitsEXT, messageType: c.VkDebugUtilsMessageTypeFlagsEXT, callbackData: ?*const c.VkDebugUtilsMessengerCallbackDataEXT, userData: ?*anyopaque) callconv(.c) c.VkBool32 {
     _ = messageType;
     _ = userData;
 

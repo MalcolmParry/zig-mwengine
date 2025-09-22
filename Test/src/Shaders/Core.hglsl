@@ -4,7 +4,7 @@
 #if defined(_VERTEX)
 	#define toPixel out
 #elif defined(_PIXEL)
-    #define toPixel in
+	#define toPixel in
 #else
 	#error "Neither building vertex or pixel shader."
 #endif

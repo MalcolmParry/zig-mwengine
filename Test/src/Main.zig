@@ -1,9 +1,5 @@
 const std = @import("std");
-const mw = struct {
-    const mwengine = @import("mwengine");
-    pub usingnamespace mwengine;
-    pub usingnamespace mwengine.RenderAPI;
-};
+const mw = @import("mwengine");
 
 var window: mw.Window = undefined;
 var running: bool = true;
@@ -25,15 +21,16 @@ pub fn main() !void {
     const alloc = gpa.allocator();
     defer _ = gpa.deinit();
 
-    var profiler = try mw.Profiler.Create("Start", "mwengine-profile-start.json", alloc);
-    defer profiler.Destroy() catch @panic("error from profiler");
+    var profiler = try mw.Profiler.Create(alloc);
+    defer profiler.Destroy();
+    defer profiler.WriteToFile("profiler.json") catch @panic("error from profiler");
     mw.Profiler.global = &profiler;
 
     window = try mw.Window.Create("TEST", 480, 340);
     try window.SetTitle("TEST");
     defer window.Destroy();
 
-    var instance = try mw.Instance.Create(true, alloc);
+    var instance = try mw.RAPI.Instance.Create(true, alloc);
     defer instance.Destroy(alloc);
 
     const physicalDevice = try instance.BestPhysicalDevice(alloc);
@@ -55,10 +52,10 @@ pub fn main() !void {
     var pixelShader = try CreateShader(&device, "res/Shaders/Triangle.glsl.frag.spv", .Pixel, alloc);
     defer pixelShader.Destroy();
 
-    var shaderSet = try mw.Shader.Set.Create(vertexShader, pixelShader, &.{}, alloc);
+    var shaderSet = try mw.RAPI.Shader.Set.Create(vertexShader, pixelShader, &.{}, alloc);
     defer shaderSet.Destroy();
 
-    const graphicsPipelineCreateInfo: mw.GraphicsPipeline.CreateInfo = .{
+    const graphicsPipelineCreateInfo: mw.RAPI.GraphicsPipeline.CreateInfo = .{
         .oldGraphicsPipeline = null,
         .device = &device,
         .renderPass = &renderPass,
@@ -66,7 +63,7 @@ pub fn main() !void {
         .framebufferSize = window.GetClientSize(),
     };
 
-    var graphicsPipeline = try mw.GraphicsPipeline.Create(graphicsPipelineCreateInfo);
+    var graphicsPipeline = try mw.RAPI.GraphicsPipeline.Create(graphicsPipelineCreateInfo);
     defer graphicsPipeline.Destroy();
 
     while (running) {
@@ -74,7 +71,7 @@ pub fn main() !void {
     }
 }
 
-fn CreateShader(device: *const mw.Device, filepath: []const u8, stage: mw.Shader.Stage, alloc: std.mem.Allocator) !mw.Shader {
+fn CreateShader(device: *const mw.RAPI.Device, filepath: []const u8, stage: mw.RAPI.Shader.Stage, alloc: std.mem.Allocator) !mw.RAPI.Shader {
     const file = try std.fs.cwd().openFile(filepath, .{ .mode = .read_only });
     defer file.close();
 
@@ -85,5 +82,5 @@ fn CreateShader(device: *const mw.Device, filepath: []const u8, stage: mw.Shader
     const read = try file.readAll(std.mem.sliceAsBytes(buffer));
     if (read != fileSize)
         return error.CouldntReadShaderFile;
-    return mw.Shader.Create(device, stage, buffer);
+    return mw.RAPI.Shader.Create(device, stage, buffer);
 }
