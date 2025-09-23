@@ -91,5 +91,9 @@ pub fn Destroy(this: *@This()) void {
     c.vkDestroyDevice(this._device, null);
 }
 
+pub fn WaitUntilIdle(this: *const @This()) !void {
+    try VK.Try(c.vkDeviceWaitIdle(this._device));
+}
+
 pub const CreateDisplay = Display.Create;
 pub const CreateBuffer = Buffer.Create;

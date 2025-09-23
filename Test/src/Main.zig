@@ -66,9 +66,14 @@ pub fn main() !void {
     var graphicsPipeline = try mw.RAPI.GraphicsPipeline.Create(graphicsPipelineCreateInfo);
     defer graphicsPipeline.Destroy();
 
+    var commandBuffer = try mw.RAPI.CommandBuffer.Create(&device);
+    defer commandBuffer.Destroy();
+
     while (running) {
         EventHandler() catch {};
     }
+
+    try device.WaitUntilIdle();
 }
 
 fn CreateShader(device: *const mw.RAPI.Device, filepath: []const u8, stage: mw.RAPI.Shader.Stage, alloc: std.mem.Allocator) !mw.RAPI.Shader {

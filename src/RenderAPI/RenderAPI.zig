@@ -7,3 +7,4 @@ pub const RenderPass = @import("RenderPass.zig");
 pub const Buffer = @import("Buffer.zig");
 pub const Shader = @import("Shader.zig");
 pub const GraphicsPipeline = @import("GraphicsPipeline.zig");
+pub const CommandBuffer = @import("CommandBuffer.zig");
