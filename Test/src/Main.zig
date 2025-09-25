@@ -69,7 +69,15 @@ pub fn main() !void {
     var commandBuffer = try mw.RAPI.CommandBuffer.Create(&device);
     defer commandBuffer.Destroy();
 
+    var imageAvailableSemaphore = try mw.RAPI.Semaphore.Create(&device);
+    defer imageAvailableSemaphore.Destroy();
+
     while (running) {
+        try device.WaitUntilIdle();
+
+        const index = try display.GetNextFramebufferIndex(&imageAvailableSemaphore, null, 1_000_000_000);
+        std.log.debug("{}\n", .{index});
+
         EventHandler() catch {};
     }
 

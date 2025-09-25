@@ -4,6 +4,8 @@ const VK = @import("Vulkan.zig");
 const Device = @import("Device.zig");
 const Platform = @import("../Platform.zig");
 const RenderPass = @import("RenderPass.zig");
+const Semaphore = @import("WaitObjects.zig").Semaphore;
+const Fence = @import("WaitObjects.zig").Fence;
 const c = VK.c;
 
 device: *Device,
@@ -32,6 +34,19 @@ pub fn Destroy(this: *@This()) void {
 
     c.vkDestroySwapchainKHR(this.device._device, this._swapchain, null);
     c.vkDestroySurfaceKHR(this.device.instance._instance, this._surface, null);
+}
+
+pub fn GetNextFramebufferIndex(this: *const @This(), signalSemaphore: ?*Semaphore, signalFence: ?*Fence, timeoutNs: u64) !u32 {
+    const nativeSemaphore = if (signalSemaphore) |x| x._semaphore else null;
+    const nativeFence = if (signalFence) |x| x._fence else null;
+    var index: u32 = undefined;
+
+    if (VK.Try(c.vkAcquireNextImageKHR(this.device._device, this._swapchain, timeoutNs, nativeSemaphore, nativeFence, &index))) {
+        return index;
+    } else |err| switch (err) {
+        VK.Error.VK_SUBOPTIMAL_KHR => return index, // TODO: allow app to rebuild when suboptimal
+        else => return err,
+    }
 }
 
 fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
