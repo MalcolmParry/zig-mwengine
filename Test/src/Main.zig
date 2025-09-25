@@ -72,8 +72,12 @@ pub fn main() !void {
     var imageAvailableSemaphore = try mw.RAPI.Semaphore.Create(&device);
     defer imageAvailableSemaphore.Destroy();
 
+    var inFLightFence = try mw.RAPI.Fence.Create(&device, true);
+    defer inFLightFence.Destroy();
+
     while (running) {
-        try device.WaitUntilIdle();
+        try inFLightFence.WaitFor(1_000_000_000);
+        try inFLightFence.Reset();
 
         const index = try display.GetNextFramebufferIndex(&imageAvailableSemaphore, null, 1_000_000_000);
         std.log.debug("{}\n", .{index});

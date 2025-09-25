@@ -55,6 +55,6 @@ pub const Fence = struct {
     }
 
     pub fn WaitFor(this: *@This(), timeoutNs: ?u64) !void {
-        try VK.Try(c.vkWaitForFences(this.device._device, 1, &this._fence, true, timeoutNs orelse std.math.maxInt(u64)));
+        try VK.Try(c.vkWaitForFences(this.device._device, 1, &this._fence, c.VK_TRUE, timeoutNs orelse std.math.maxInt(u64)));
     }
 };
