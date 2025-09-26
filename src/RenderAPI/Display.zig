@@ -6,10 +6,13 @@ const Platform = @import("../Platform.zig");
 const RenderPass = @import("RenderPass.zig");
 const Semaphore = @import("WaitObjects.zig").Semaphore;
 const Fence = @import("WaitObjects.zig").Fence;
+const Image = @import("Image.zig");
 const c = VK.c;
 
 device: *Device,
 window: *const Platform.Window,
+images: []Image,
+imageViews: []Image.View,
 _surface: c.VkSurfaceKHR,
 _surfaceFormat: c.VkSurfaceFormatKHR,
 _swapchain: c.VkSwapchainKHR,
@@ -28,10 +31,16 @@ pub fn Create(device: *Device, window: *Platform.Window, alloc: std.mem.Allocato
     return this;
 }
 
-pub fn Destroy(this: *@This()) void {
+pub fn Destroy(this: *@This(), alloc: std.mem.Allocator) void {
     var prof = Profiler.StartFuncProfiler(@src());
     defer prof.Stop();
 
+    for (this.imageViews) |*imageView| {
+        c.vkDestroyImageView(this.device._device, imageView._imageView, null);
+    }
+
+    alloc.free(this.imageViews);
+    alloc.free(this.images);
     c.vkDestroySwapchainKHR(this.device._device, this._swapchain, null);
     c.vkDestroySurfaceKHR(this.device.instance._instance, this._surface, null);
 }
@@ -58,9 +67,9 @@ fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
     var capabilities: c.VkSurfaceCapabilitiesKHR = undefined;
     try VK.Try(c.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(this.device.physical._device, this._surface, &capabilities));
 
-    var imageCount = capabilities.minImageCount + 1;
-    if (capabilities.maxImageCount > 0 and imageCount > capabilities.maxImageCount) {
-        imageCount = capabilities.maxImageCount;
+    var minImageCount = capabilities.minImageCount + 1;
+    if (capabilities.maxImageCount > 0 and minImageCount > capabilities.maxImageCount) {
+        minImageCount = capabilities.maxImageCount;
     }
 
     const imageFormat = try ChooseSurfaceFormat(this, alloc);
@@ -69,7 +78,7 @@ fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
     const createInfo: c.VkSwapchainCreateInfoKHR = .{
         .sType = c.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = this._surface,
-        .minImageCount = imageCount,
+        .minImageCount = minImageCount,
         .imageFormat = imageFormat.format,
         .imageColorSpace = imageFormat.colorSpace,
         .imageExtent = extent,
@@ -86,6 +95,45 @@ fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
     };
 
     try VK.Try(c.vkCreateSwapchainKHR(this.device._device, &createInfo, null, &this._swapchain));
+
+    var imageCount: u32 = undefined;
+    try VK.Try(c.vkGetSwapchainImagesKHR(this.device._device, this._swapchain, &imageCount, null));
+    const images = try alloc.alloc(c.VkImage, imageCount);
+    defer alloc.free(images);
+    try VK.Try(c.vkGetSwapchainImagesKHR(this.device._device, this._swapchain, &imageCount, images.ptr));
+
+    this.images = try alloc.alloc(Image, imageCount);
+    errdefer alloc.free(this.images);
+    for (this.images, 0..) |*image, i| {
+        image.* = .{
+            ._image = images[i],
+        };
+    }
+
+    this.imageViews = try alloc.alloc(Image.View, imageCount);
+    errdefer alloc.free(this.imageViews);
+    for (this.images, this.imageViews) |*image, *imageView| {
+        imageView.* = .{
+            .device = this.device,
+            ._imageView = null,
+        };
+
+        const viewCreateInfo: c.VkImageViewCreateInfo = .{
+            .sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = image._image,
+            .viewType = c.VK_IMAGE_VIEW_TYPE_2D, // TODO: allow for different types
+            .format = imageFormat.format,
+            .subresourceRange = .{
+                .aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0, // TODO: allow for mip mapping
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+
+        try VK.Try(c.vkCreateImageView(this.device._device, &viewCreateInfo, null, &imageView._imageView));
+    }
 }
 
 fn ChooseSurfaceFormat(this: *const @This(), alloc: std.mem.Allocator) !c.VkSurfaceFormatKHR {

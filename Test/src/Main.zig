@@ -38,7 +38,7 @@ pub fn main() !void {
     defer device.Destroy();
 
     var display = try device.CreateDisplay(&window, alloc);
-    defer display.Destroy();
+    defer display.Destroy(alloc);
 
     var renderPass = try display.CreateRenderPass();
     defer renderPass.Destroy();
