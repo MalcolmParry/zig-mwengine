@@ -39,16 +39,16 @@ pub fn Create(display: *const Display) !@This() {
         .layout = c.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
     };
 
-    const depthAttachmentRef: c.VkAttachmentReference = .{
-        .attachment = 1,
-        .layout = c.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-    };
+    // const depthAttachmentRef: c.VkAttachmentReference = .{
+    //     .attachment = 1,
+    //     .layout = c.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    // };
 
     const subpassDesc: c.VkSubpassDescription = .{
         .pipelineBindPoint = c.VK_PIPELINE_BIND_POINT_GRAPHICS,
         .colorAttachmentCount = 1,
         .pColorAttachments = &colorAttachmentRef,
-        .pDepthStencilAttachment = &depthAttachmentRef,
+        .pDepthStencilAttachment = null, //&depthAttachmentRef,
     };
 
     const subpassDep: c.VkSubpassDependency = .{
@@ -63,7 +63,7 @@ pub fn Create(display: *const Display) !@This() {
     const attachments: [2]c.VkAttachmentDescription = .{ colorAttachment, depthAttachment };
     const renderPassInfo: c.VkRenderPassCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = 2,
+        .attachmentCount = 1, // only color attachment now
         .pAttachments = &attachments,
         .subpassCount = 1,
         .pSubpasses = &subpassDesc,

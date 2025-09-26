@@ -43,6 +43,15 @@ pub fn main() !void {
     var renderPass = try display.CreateRenderPass();
     defer renderPass.Destroy();
 
+    const framebuffers = try alloc.alloc(mw.RAPI.Framebuffer, display.imageViews.len);
+    defer alloc.free(framebuffers);
+    for (framebuffers, display.imageViews) |*framebuffer, *imageView| {
+        framebuffer.* = try .Create(&device, &renderPass, display.imageSize, &.{imageView}, alloc);
+    }
+    defer for (framebuffers) |*framebuffer| {
+        framebuffer.Destroy(&device);
+    };
+
     //const buffer = try device.CreateBuffer(16, .{ .vertex = true });
     //defer buffer.Destroy();
 
@@ -79,8 +88,8 @@ pub fn main() !void {
         try inFLightFence.WaitFor(1_000_000_000);
         try inFLightFence.Reset();
 
-        const index = try display.GetNextFramebufferIndex(&imageAvailableSemaphore, null, 1_000_000_000);
-        std.log.debug("{}\n", .{index});
+        const framebufferIndex = try display.GetNextFramebufferIndex(&imageAvailableSemaphore, null, 1_000_000_000);
+        std.log.debug("{}\n", .{framebufferIndex});
 
         EventHandler() catch {};
     }

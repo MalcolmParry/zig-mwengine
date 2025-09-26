@@ -10,7 +10,7 @@ const Image = @import("Image.zig");
 const c = VK.c;
 
 device: *Device,
-window: *const Platform.Window,
+imageSize: @Vector(2, u32),
 images: []Image,
 imageViews: []Image.View,
 _surface: c.VkSurfaceKHR,
@@ -20,7 +20,7 @@ _swapchain: c.VkSwapchainKHR,
 pub fn Create(device: *Device, window: *Platform.Window, alloc: std.mem.Allocator) !@This() {
     var this: @This() = undefined;
     this.device = device;
-    this.window = window;
+    this.imageSize = window.GetClientSize();
 
     const nativeInstance: c.VkInstance = device.instance._instance;
     this._surface = try Platform.Vulkan.CreateSurface(window, nativeInstance);
@@ -162,10 +162,9 @@ fn ChooseSwapExtent(this: *const @This()) !c.VkExtent2D {
     if (capabilities.currentExtent.width != std.math.maxInt(u32))
         return capabilities.currentExtent;
 
-    const windowSize = this.window.GetClientSize();
     return .{
-        .width = std.math.clamp(windowSize[0], capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-        .height = std.math.clamp(windowSize[1], capabilities.minImageExtent.height, capabilities.maxImageExtent.height),
+        .width = std.math.clamp(this.imageSize[0], capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+        .height = std.math.clamp(this.imageSize[1], capabilities.minImageExtent.height, capabilities.maxImageExtent.height),
     };
 }
 
