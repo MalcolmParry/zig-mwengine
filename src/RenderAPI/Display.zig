@@ -89,7 +89,7 @@ fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
         .pQueueFamilyIndices = null,
         .preTransform = capabilities.currentTransform,
         .compositeAlpha = c.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode = 0, // todo
+        .presentMode = 0, // TODO: implement
         .clipped = 1,
         .oldSwapchain = oldSwapchain,
     };

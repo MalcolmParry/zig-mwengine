@@ -76,10 +76,13 @@ pub fn main() !void {
     defer graphicsPipeline.Destroy();
 
     var commandBuffer = try mw.RAPI.CommandBuffer.Create(&device);
-    defer commandBuffer.Destroy();
+    defer commandBuffer.Destroy(&device);
 
     var imageAvailableSemaphore = try mw.RAPI.Semaphore.Create(&device);
     defer imageAvailableSemaphore.Destroy();
+
+    var renderFinishedSemaphore = try mw.RAPI.Semaphore.Create(&device);
+    defer renderFinishedSemaphore.Destroy();
 
     var inFLightFence = try mw.RAPI.Fence.Create(&device, true);
     defer inFLightFence.Destroy();
@@ -90,6 +93,11 @@ pub fn main() !void {
 
         const framebufferIndex = try display.GetNextFramebufferIndex(&imageAvailableSemaphore, null, 1_000_000_000);
         std.log.debug("{}\n", .{framebufferIndex});
+
+        try commandBuffer.Begin();
+        try commandBuffer.End();
+        try commandBuffer.Submit(&device, &imageAvailableSemaphore, &renderFinishedSemaphore, &inFLightFence);
+        try commandBuffer.Reset();
 
         EventHandler() catch {};
     }
