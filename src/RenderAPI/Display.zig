@@ -58,6 +58,24 @@ pub fn GetNextFramebufferIndex(this: *const @This(), signalSemaphore: ?*Semaphor
     }
 }
 
+pub fn PresentFramebuffer(this: *@This(), index: u32, waitSemaphore: ?*Semaphore) !void {
+    const nativeSemaphore = if (waitSemaphore) |x| &x._semaphore else null;
+    var result: c.VkResult = undefined;
+
+    const presentInfo: c.VkPresentInfoKHR = .{
+        .sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = if (waitSemaphore) |_| 1 else 0,
+        .pWaitSemaphores = nativeSemaphore,
+        .swapchainCount = 1,
+        .pSwapchains = &this._swapchain,
+        .pImageIndices = &index,
+        .pResults = &result,
+    };
+
+    try VK.Try(c.vkQueuePresentKHR(this.device._graphicsQueue, &presentInfo));
+    try VK.Try(result);
+}
+
 fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
     var prof = Profiler.StartFuncProfiler(@src());
     defer prof.Stop();

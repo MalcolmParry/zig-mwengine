@@ -91,18 +91,20 @@ pub fn main() !void {
     while (running) {
         try inFLightFence.WaitFor(1_000_000_000);
         try inFLightFence.Reset();
+        try device.WaitUntilIdle();
 
         const framebufferIndex = try display.GetNextFramebufferIndex(&imageAvailableSemaphore, null, 1_000_000_000);
         const framebuffer = &framebuffers[framebufferIndex];
-        std.log.debug("{}\n", .{framebufferIndex});
+        // std.log.debug("{}\n", .{framebufferIndex});
 
+        try commandBuffer.Reset();
         try commandBuffer.Begin();
         commandBuffer.QueueBeginRenderPass(&renderPass, framebuffer);
         commandBuffer.QueueDraw(&graphicsPipeline, framebuffer);
         commandBuffer.QueueEndRenderPass();
         try commandBuffer.End();
         try commandBuffer.Submit(&device, &imageAvailableSemaphore, &renderFinishedSemaphore, &inFLightFence);
-        try commandBuffer.Reset();
+        try display.PresentFramebuffer(framebufferIndex, &renderFinishedSemaphore);
 
         EventHandler() catch {};
     }

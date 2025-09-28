@@ -118,5 +118,5 @@ pub fn QueueDraw(this: *@This(), graphicsPipeline: *GraphicsPipeline, framebuffe
     };
 
     c.vkCmdSetScissor(this._commandBuffer, 0, 1, &scissor);
-    c.vkCmdDraw(this._commandBuffer, graphicsPipeline.vertexCount, 0, 0, 0);
+    c.vkCmdDraw(this._commandBuffer, graphicsPipeline.vertexCount, 1, 0, 0);
 }
