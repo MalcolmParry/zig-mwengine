@@ -69,6 +69,7 @@ pub fn main() !void {
         .device = &device,
         .renderPass = &renderPass,
         .shaderSet = &shaderSet,
+        .vertexCount = 3,
         .framebufferSize = window.GetClientSize(),
     };
 
@@ -92,9 +93,13 @@ pub fn main() !void {
         try inFLightFence.Reset();
 
         const framebufferIndex = try display.GetNextFramebufferIndex(&imageAvailableSemaphore, null, 1_000_000_000);
+        const framebuffer = &framebuffers[framebufferIndex];
         std.log.debug("{}\n", .{framebufferIndex});
 
         try commandBuffer.Begin();
+        commandBuffer.QueueBeginRenderPass(&renderPass, framebuffer);
+        commandBuffer.QueueDraw(&graphicsPipeline, framebuffer);
+        commandBuffer.QueueEndRenderPass();
         try commandBuffer.End();
         try commandBuffer.Submit(&device, &imageAvailableSemaphore, &renderFinishedSemaphore, &inFLightFence);
         try commandBuffer.Reset();

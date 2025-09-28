@@ -2,6 +2,9 @@ const std = @import("std");
 const Profiler = @import("../Profiler.zig");
 const VK = @import("Vulkan.zig");
 const Device = @import("Device.zig");
+const RenderPass = @import("RenderPass.zig");
+const Framebuffer = @import("Framebuffer.zig");
+const GraphicsPipeline = @import("GraphicsPipeline.zig");
 const Semaphore = @import("WaitObjects.zig").Semaphore;
 const Fence = @import("WaitObjects.zig").Fence;
 const c = VK.c;
@@ -64,4 +67,56 @@ pub fn Submit(this: *@This(), device: *Device, waitSemaphore: ?*Semaphore, signa
     };
 
     try VK.Try(c.vkQueueSubmit(device._graphicsQueue, 1, &submitInfo, nativeSignalFence));
+}
+
+// Graphics Commands
+pub fn QueueBeginRenderPass(this: *@This(), renderPass: *RenderPass, framebuffer: *Framebuffer) void {
+    const size = framebuffer.imageSize;
+
+    const clearValue: c.VkClearValue = .{
+        .color = .{
+            .float32 = .{ 0, 0, 0, 1 },
+        },
+    };
+
+    const renderPassInfo: c.VkRenderPassBeginInfo = .{
+        .sType = c.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass = renderPass._renderPass,
+        .framebuffer = framebuffer._framebuffer,
+        .renderArea = .{
+            .extent = .{ .width = size[0], .height = size[1] },
+            .offset = .{ .x = 0, .y = 0 },
+        },
+        .clearValueCount = 1,
+        .pClearValues = &clearValue,
+    };
+
+    c.vkCmdBeginRenderPass(this._commandBuffer, &renderPassInfo, c.VK_SUBPASS_CONTENTS_INLINE);
+}
+
+pub fn QueueEndRenderPass(this: *@This()) void {
+    c.vkCmdEndRenderPass(this._commandBuffer);
+}
+
+pub fn QueueDraw(this: *@This(), graphicsPipeline: *GraphicsPipeline, framebuffer: *Framebuffer) void {
+    c.vkCmdBindPipeline(this._commandBuffer, c.VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline._pipeline);
+
+    const viewport: c.VkViewport = .{
+        .x = 0,
+        .y = 0,
+        .width = @floatFromInt(framebuffer.imageSize[0]),
+        .height = @floatFromInt(framebuffer.imageSize[1]),
+        .minDepth = 0,
+        .maxDepth = 1,
+    };
+
+    c.vkCmdSetViewport(this._commandBuffer, 0, 1, &viewport);
+
+    const scissor: c.VkRect2D = .{
+        .extent = .{ .width = framebuffer.imageSize[0], .height = framebuffer.imageSize[1] },
+        .offset = .{ .x = 0, .y = 0 },
+    };
+
+    c.vkCmdSetScissor(this._commandBuffer, 0, 1, &scissor);
+    c.vkCmdDraw(this._commandBuffer, graphicsPipeline.vertexCount, 0, 0, 0);
 }

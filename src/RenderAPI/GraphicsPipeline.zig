@@ -11,6 +11,7 @@ const GraphicsPipeline = @This();
 device: *const Device,
 _pipeline: c.VkPipeline,
 _pipelineLayout: c.VkPipelineLayout,
+vertexCount: u32,
 
 pub fn Create(createInfo: CreateInfo) !@This() {
     var prof = Profiler.StartFuncProfiler(@src());
@@ -18,6 +19,7 @@ pub fn Create(createInfo: CreateInfo) !@This() {
 
     var this: @This() = undefined;
     this.device = createInfo.device;
+    this.vertexCount = createInfo.vertexCount;
 
     const extent: c.VkExtent2D = .{
         .width = createInfo.framebufferSize[0],
@@ -195,5 +197,6 @@ pub const CreateInfo = struct {
     renderPass: *const RenderPass,
     framebufferSize: @Vector(2, u32),
     shaderSet: *Shader.Set,
+    vertexCount: u32,
     oldGraphicsPipeline: ?*GraphicsPipeline,
 };
