@@ -13,8 +13,8 @@ pub const c = @cImport({
     @cInclude("vulkan/vulkan.h");
 });
 
-pub const requiredExtentions = Platform.Vulkan.requiredExtentions;
-pub const requiredDeviceExtentions: [1][*:0]const u8 = .{
+pub const requiredExtensions = Platform.Vulkan.requiredExtensions;
+pub const requiredDeviceExtensions: [1][*:0]const u8 = .{
     c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 

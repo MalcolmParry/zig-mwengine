@@ -64,8 +64,8 @@ pub fn Create(instance: *const Instance, physicalDevice: *const Physical, alloc:
         .pQueueCreateInfos = &queueCreateInfo,
         .queueCreateInfoCount = 1,
         .pEnabledFeatures = &features,
-        .enabledExtensionCount = VK.requiredDeviceExtentions.len,
-        .ppEnabledExtensionNames = &VK.requiredDeviceExtentions,
+        .enabledExtensionCount = VK.requiredDeviceExtensions.len,
+        .ppEnabledExtensionNames = &VK.requiredDeviceExtensions,
     };
 
     try VK.Try(c.vkCreateDevice(physicalDevice._device, &createInfo, null, &this._device));

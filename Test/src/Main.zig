@@ -91,7 +91,6 @@ pub fn main() !void {
     while (running) {
         try inFLightFence.WaitFor(1_000_000_000);
         try inFLightFence.Reset();
-        try device.WaitUntilIdle();
 
         const framebufferIndex = try display.GetNextFramebufferIndex(&imageAvailableSemaphore, null, 1_000_000_000);
         const framebuffer = &framebuffers[framebufferIndex];

@@ -6,7 +6,7 @@ const Device = @import("Device.zig");
 
 const c = VK.c;
 
-const validationExtentions: [1][*:0]const u8 = .{
+const validationExtensions: [1][*:0]const u8 = .{
     c.VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 };
 
@@ -30,14 +30,14 @@ pub fn Create(debugLogging: bool, alloc: std.mem.Allocator) !@This() {
     };
 
     const validationLayer: [*]const u8 = "VK_LAYER_KHRONOS_validation";
-    const extentions = VK.requiredExtentions;
-    const debugExtentions = extentions ++ validationExtentions;
+    const extensions = VK.requiredExtensions;
+    const debugExtensions = extensions ++ validationExtensions;
 
     const instanceCreateInfo: c.VkInstanceCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &appInfo,
-        .enabledExtensionCount = if (debugLogging) debugExtentions.len else extentions.len,
-        .ppEnabledExtensionNames = if (debugLogging) &debugExtentions else &extentions,
+        .enabledExtensionCount = if (debugLogging) debugExtensions.len else extensions.len,
+        .ppEnabledExtensionNames = if (debugLogging) &debugExtensions else &extensions,
         .enabledLayerCount = if (debugLogging) 1 else 0,
         .ppEnabledLayerNames = if (debugLogging) &validationLayer else null,
     };

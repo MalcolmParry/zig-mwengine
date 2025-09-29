@@ -101,7 +101,7 @@ pub const Window = struct {
 };
 
 pub const Vulkan = struct {
-    pub const requiredExtentions: [2][*:0]const u8 = .{
+    pub const requiredExtensions: [2][*:0]const u8 = .{
         "VK_KHR_surface",
         "VK_KHR_xlib_surface",
     };
