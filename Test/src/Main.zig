@@ -88,11 +88,31 @@ pub fn main() !void {
     var inFLightFence = try mw.RAPI.Fence.Create(&device, true);
     defer inFLightFence.Destroy();
 
+    defer device.WaitUntilIdle() catch unreachable;
     while (running) {
         try inFLightFence.WaitFor(1_000_000_000);
         try inFLightFence.Reset();
+        try device.WaitUntilIdle();
 
-        const framebufferIndex = try display.GetNextFramebufferIndex(&imageAvailableSemaphore, null, 1_000_000_000);
+        var framebufferIndex: u32 = undefined;
+        while (true) {
+            if (display.GetNextFramebufferIndex(&imageAvailableSemaphore, null, 1_000_000_000)) |x| {
+                framebufferIndex = x;
+                break;
+            } else |err| switch (err) {
+                error.DisplayOutOfDate => {
+                    try device.WaitUntilIdle();
+                    for (framebuffers) |*framebuffer| {
+                        framebuffer.Destroy(&device);
+                    }
+                    try display.Rebuild(window.GetClientSize(), alloc);
+                    for (framebuffers, display.imageViews) |*framebuffer, *imageView| {
+                        framebuffer.* = try .Create(&device, &renderPass, display.imageSize, &.{imageView}, alloc);
+                    }
+                },
+                else => return err,
+            }
+        }
         const framebuffer = &framebuffers[framebufferIndex];
         // std.log.debug("{}\n", .{framebufferIndex});
 
@@ -103,12 +123,22 @@ pub fn main() !void {
         commandBuffer.QueueEndRenderPass();
         try commandBuffer.End();
         try commandBuffer.Submit(&device, &imageAvailableSemaphore, &renderFinishedSemaphore, &inFLightFence);
-        try display.PresentFramebuffer(framebufferIndex, &renderFinishedSemaphore);
+        display.PresentFramebuffer(framebufferIndex, &renderFinishedSemaphore) catch |err| switch (err) {
+            error.DisplayOutOfDate => {
+                try device.WaitUntilIdle();
+                for (framebuffers) |*x| {
+                    x.Destroy(&device);
+                }
+                try display.Rebuild(window.GetClientSize(), alloc);
+                for (framebuffers, display.imageViews) |*x, *imageView| {
+                    x.* = try .Create(&device, &renderPass, display.imageSize, &.{imageView}, alloc);
+                }
+            },
+            else => return err,
+        };
 
         EventHandler() catch {};
     }
-
-    try device.WaitUntilIdle();
 }
 
 fn CreateShader(device: *const mw.RAPI.Device, filepath: []const u8, stage: mw.RAPI.Shader.Stage, alloc: std.mem.Allocator) !mw.RAPI.Shader {

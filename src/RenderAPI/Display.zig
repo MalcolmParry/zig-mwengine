@@ -35,12 +35,7 @@ pub fn Destroy(this: *@This(), alloc: std.mem.Allocator) void {
     var prof = Profiler.StartFuncProfiler(@src());
     defer prof.Stop();
 
-    for (this.imageViews) |*imageView| {
-        c.vkDestroyImageView(this.device._device, imageView._imageView, null);
-    }
-
-    alloc.free(this.imageViews);
-    alloc.free(this.images);
+    this.DestroySwapchain(alloc);
     c.vkDestroySwapchainKHR(this.device._device, this._swapchain, null);
     c.vkDestroySurfaceKHR(this.device.instance._instance, this._surface, null);
 }
@@ -53,14 +48,13 @@ pub fn GetNextFramebufferIndex(this: *const @This(), signalSemaphore: ?*Semaphor
     if (VK.Try(c.vkAcquireNextImageKHR(this.device._device, this._swapchain, timeoutNs, nativeSemaphore, nativeFence, &index))) {
         return index;
     } else |err| switch (err) {
-        VK.Error.VK_SUBOPTIMAL_KHR => return index, // TODO: allow app to rebuild when suboptimal
+        VK.Error.VK_SUBOPTIMAL_KHR, VK.Error.VK_ERROR_OUT_OF_DATE_KHR => return error.DisplayOutOfDate,
         else => return err,
     }
 }
 
 pub fn PresentFramebuffer(this: *@This(), index: u32, waitSemaphore: ?*Semaphore) !void {
     const nativeSemaphore = if (waitSemaphore) |x| &x._semaphore else null;
-    var result: c.VkResult = undefined;
 
     const presentInfo: c.VkPresentInfoKHR = .{
         .sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -69,11 +63,21 @@ pub fn PresentFramebuffer(this: *@This(), index: u32, waitSemaphore: ?*Semaphore
         .swapchainCount = 1,
         .pSwapchains = &this._swapchain,
         .pImageIndices = &index,
-        .pResults = &result,
+        .pResults = null,
     };
 
-    try VK.Try(c.vkQueuePresentKHR(this.device._graphicsQueue, &presentInfo));
-    try VK.Try(result);
+    if (VK.Try(c.vkQueuePresentKHR(this.device._graphicsQueue, &presentInfo))) {} else |err| switch (err) {
+        VK.Error.VK_SUBOPTIMAL_KHR, VK.Error.VK_ERROR_OUT_OF_DATE_KHR => return error.DisplayOutOfDate,
+        else => return err,
+    }
+}
+
+pub fn Rebuild(this: *@This(), imageSize: @Vector(2, u32), alloc: std.mem.Allocator) !void {
+    const oldSwapchain = this._swapchain;
+    this.DestroySwapchain(alloc);
+    this.imageSize = imageSize;
+    try this.CreateSwapchain(alloc);
+    c.vkDestroySwapchainKHR(this.device._device, oldSwapchain, null);
 }
 
 fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
@@ -107,7 +111,7 @@ fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
         .pQueueFamilyIndices = null,
         .preTransform = capabilities.currentTransform,
         .compositeAlpha = c.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode = 0, // TODO: implement
+        .presentMode = c.VK_PRESENT_MODE_FIFO_KHR, // TODO: allow change
         .clipped = 1,
         .oldSwapchain = oldSwapchain,
     };
@@ -152,6 +156,15 @@ fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
 
         try VK.Try(c.vkCreateImageView(this.device._device, &viewCreateInfo, null, &imageView._imageView));
     }
+}
+
+fn DestroySwapchain(this: *@This(), alloc: std.mem.Allocator) void {
+    for (this.imageViews) |*imageView| {
+        c.vkDestroyImageView(this.device._device, imageView._imageView, null);
+    }
+
+    alloc.free(this.imageViews);
+    alloc.free(this.images);
 }
 
 fn ChooseSurfaceFormat(this: *const @This(), alloc: std.mem.Allocator) !c.VkSurfaceFormatKHR {
