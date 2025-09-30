@@ -38,6 +38,7 @@ pub fn main() !void {
     defer device.Destroy();
 
     var display = try device.CreateDisplay(&window, alloc);
+    const framesInFlight: u32 = @intCast(display.imageViews.len);
     defer display.Destroy(alloc);
 
     var renderPass = try display.CreateRenderPass();
@@ -76,23 +77,52 @@ pub fn main() !void {
     var graphicsPipeline = try mw.RAPI.GraphicsPipeline.Create(graphicsPipelineCreateInfo);
     defer graphicsPipeline.Destroy();
 
-    var commandBuffer = try mw.RAPI.CommandBuffer.Create(&device);
-    defer commandBuffer.Destroy(&device);
+    const commandBuffers = try alloc.alloc(mw.RAPI.CommandBuffer, framesInFlight);
+    for (commandBuffers) |*commandBuffer| {
+        commandBuffer.* = try .Create(&device);
+    }
+    defer alloc.free(commandBuffers);
+    defer for (commandBuffers) |*commandBuffer| {
+        commandBuffer.Destroy(&device);
+    };
 
-    var imageAvailableSemaphore = try mw.RAPI.Semaphore.Create(&device);
-    defer imageAvailableSemaphore.Destroy();
+    const imageAvailableSemaphores = try alloc.alloc(mw.RAPI.Semaphore, framesInFlight);
+    for (imageAvailableSemaphores) |*x| {
+        x.* = try .Create(&device);
+    }
+    defer alloc.free(imageAvailableSemaphores);
+    defer for (imageAvailableSemaphores) |*x| {
+        x.Destroy();
+    };
 
-    var renderFinishedSemaphore = try mw.RAPI.Semaphore.Create(&device);
-    defer renderFinishedSemaphore.Destroy();
+    const renderFinishedSemaphores = try alloc.alloc(mw.RAPI.Semaphore, framesInFlight);
+    for (renderFinishedSemaphores) |*x| {
+        x.* = try .Create(&device);
+    }
+    defer alloc.free(renderFinishedSemaphores);
+    defer for (renderFinishedSemaphores) |*x| {
+        x.Destroy();
+    };
 
-    var inFLightFence = try mw.RAPI.Fence.Create(&device, true);
-    defer inFLightFence.Destroy();
+    const inFLightFences = try alloc.alloc(mw.RAPI.Fence, framesInFlight);
+    for (inFLightFences) |*x| {
+        x.* = try .Create(&device, true);
+    }
+    defer alloc.free(inFLightFences);
+    defer for (inFLightFences) |*x| {
+        x.Destroy();
+    };
 
     defer device.WaitUntilIdle() catch unreachable;
+    var frame: u32 = 0;
     while (running) {
+        var commandBuffer = commandBuffers[frame];
+        var imageAvailableSemaphore = imageAvailableSemaphores[frame];
+        var renderFinishedSemaphore = renderFinishedSemaphores[frame];
+        var inFLightFence = inFLightFences[frame];
+
         try inFLightFence.WaitFor(1_000_000_000);
         try inFLightFence.Reset();
-        try device.WaitUntilIdle();
 
         var framebufferIndex: u32 = undefined;
         while (true) {
@@ -138,6 +168,8 @@ pub fn main() !void {
         };
 
         EventHandler() catch {};
+
+        frame = (frame + 1) % framesInFlight;
     }
 }
 

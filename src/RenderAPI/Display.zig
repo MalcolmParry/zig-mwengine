@@ -111,7 +111,7 @@ fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
         .pQueueFamilyIndices = null,
         .preTransform = capabilities.currentTransform,
         .compositeAlpha = c.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode = c.VK_PRESENT_MODE_FIFO_KHR, // TODO: allow change
+        .presentMode = c.VK_PRESENT_MODE_IMMEDIATE_KHR, // TODO: allow change
         .clipped = 1,
         .oldSwapchain = oldSwapchain,
     };
