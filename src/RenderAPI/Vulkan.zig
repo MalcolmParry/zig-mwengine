@@ -14,6 +14,7 @@ pub const c = @cImport({
 });
 
 pub const requiredExtensions = Platform.Vulkan.requiredExtensions ++ .{
+    c.VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
     c.VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME,
     c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
 };

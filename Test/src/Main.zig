@@ -65,16 +65,14 @@ pub fn main() !void {
     var shaderSet = try mw.RAPI.Shader.Set.Create(vertexShader, pixelShader, &.{}, alloc);
     defer shaderSet.Destroy();
 
-    const graphicsPipelineCreateInfo: mw.RAPI.GraphicsPipeline.CreateInfo = .{
+    var graphicsPipeline = try mw.RAPI.GraphicsPipeline.Create(.{
         .oldGraphicsPipeline = null,
         .device = &device,
         .renderPass = &renderPass,
         .shaderSet = &shaderSet,
         .vertexCount = 3,
         .framebufferSize = window.GetClientSize(),
-    };
-
-    var graphicsPipeline = try mw.RAPI.GraphicsPipeline.Create(graphicsPipelineCreateInfo);
+    });
     defer graphicsPipeline.Destroy();
 
     const commandBuffers = try alloc.alloc(mw.RAPI.CommandBuffer, framesInFlight);
