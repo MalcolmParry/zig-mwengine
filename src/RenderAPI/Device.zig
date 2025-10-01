@@ -55,17 +55,29 @@ pub fn Create(instance: *const Instance, physicalDevice: *const Physical, alloc:
         }
     }
 
+    var maintenanceFeatures: c.VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR = .{
+        .sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR,
+        .swapchainMaintenance1 = c.VK_TRUE,
+    };
+
     const features: c.VkPhysicalDeviceFeatures = .{
         .samplerAnisotropy = c.VK_TRUE,
     };
 
+    var features2: c.VkPhysicalDeviceFeatures2 = .{
+        .sType = c.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+        .features = features,
+        .pNext = &maintenanceFeatures,
+    };
+
+    // TODO: check extention support
     const createInfo: c.VkDeviceCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pQueueCreateInfos = &queueCreateInfo,
         .queueCreateInfoCount = 1,
-        .pEnabledFeatures = &features,
         .enabledExtensionCount = VK.requiredDeviceExtensions.len,
         .ppEnabledExtensionNames = &VK.requiredDeviceExtensions,
+        .pNext = &features2,
     };
 
     try VK.Try(c.vkCreateDevice(physicalDevice._device, &createInfo, null, &this._device));

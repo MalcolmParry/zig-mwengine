@@ -126,7 +126,7 @@ pub fn main() !void {
 
         var framebufferIndex: u32 = undefined;
         while (true) {
-            if (display.GetNextFramebufferIndex(&imageAvailableSemaphore, null, 1_000_000_000)) |x| {
+            if (display.AcquireFramebufferIndex(&imageAvailableSemaphore, null, 1_000_000_000)) |x| {
                 framebufferIndex = x;
                 break;
             } else |err| switch (err) {
@@ -152,8 +152,8 @@ pub fn main() !void {
         commandBuffer.QueueDraw(&graphicsPipeline, framebuffer);
         commandBuffer.QueueEndRenderPass();
         try commandBuffer.End();
-        try commandBuffer.Submit(&device, &imageAvailableSemaphore, &renderFinishedSemaphore, &inFLightFence);
-        display.PresentFramebuffer(framebufferIndex, &renderFinishedSemaphore) catch |err| switch (err) {
+        try commandBuffer.Submit(&device, &imageAvailableSemaphore, &renderFinishedSemaphore, null);
+        display.PresentFramebuffer(framebufferIndex, &renderFinishedSemaphore, &inFLightFence) catch |err| switch (err) {
             error.DisplayOutOfDate => {
                 try device.WaitUntilIdle();
                 for (framebuffers) |*x| {

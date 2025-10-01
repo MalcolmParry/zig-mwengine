@@ -40,7 +40,7 @@ pub fn Destroy(this: *@This(), alloc: std.mem.Allocator) void {
     c.vkDestroySurfaceKHR(this.device.instance._instance, this._surface, null);
 }
 
-pub fn GetNextFramebufferIndex(this: *const @This(), signalSemaphore: ?*Semaphore, signalFence: ?*Fence, timeoutNs: u64) !u32 {
+pub fn AcquireFramebufferIndex(this: *const @This(), signalSemaphore: ?*Semaphore, signalFence: ?*Fence, timeoutNs: u64) !u32 {
     const nativeSemaphore = if (signalSemaphore) |x| x._semaphore else null;
     const nativeFence = if (signalFence) |x| x._fence else null;
     var index: u32 = undefined;
@@ -53,8 +53,15 @@ pub fn GetNextFramebufferIndex(this: *const @This(), signalSemaphore: ?*Semaphor
     }
 }
 
-pub fn PresentFramebuffer(this: *@This(), index: u32, waitSemaphore: ?*Semaphore) !void {
+// TODO: allow for multiple semaphores and fences
+pub fn PresentFramebuffer(this: *@This(), index: u32, waitSemaphore: ?*Semaphore, signalFence: ?*Fence) !void {
     const nativeSemaphore = if (waitSemaphore) |x| &x._semaphore else null;
+
+    const presentFenceInfo: ?c.VkSwapchainPresentFenceInfoKHR = if (signalFence) |x| .{
+        .sType = c.VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR,
+        .swapchainCount = 1,
+        .pFences = &x._fence,
+    } else null;
 
     const presentInfo: c.VkPresentInfoKHR = .{
         .sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -64,6 +71,7 @@ pub fn PresentFramebuffer(this: *@This(), index: u32, waitSemaphore: ?*Semaphore
         .pSwapchains = &this._swapchain,
         .pImageIndices = &index,
         .pResults = null,
+        .pNext = if (signalFence) |_| &presentFenceInfo.? else null,
     };
 
     if (VK.Try(c.vkQueuePresentKHR(this.device._graphicsQueue, &presentInfo))) {} else |err| switch (err) {

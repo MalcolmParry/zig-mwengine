@@ -29,6 +29,7 @@ pub fn Create(debugLogging: bool, alloc: std.mem.Allocator) !@This() {
         .apiVersion = c.VK_API_VERSION_1_0,
     };
 
+    // TODO: check extention support
     const validationLayer: [*]const u8 = "VK_LAYER_KHRONOS_validation";
     const extensions = VK.requiredExtensions;
     const debugExtensions = extensions ++ validationExtensions;
