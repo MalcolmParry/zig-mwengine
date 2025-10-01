@@ -40,7 +40,7 @@ pub fn Destroy(this: *@This(), alloc: std.mem.Allocator) void {
     c.vkDestroySurfaceKHR(this.device.instance._instance, this._surface, null);
 }
 
-pub fn AcquireFramebufferIndex(this: *const @This(), signalSemaphore: ?*Semaphore, signalFence: ?*Fence, timeoutNs: u64) !u32 {
+pub fn AcquireFramebufferIndex(this: *@This(), signalSemaphore: ?*Semaphore, signalFence: ?*Fence, timeoutNs: u64) !u32 {
     const nativeSemaphore = if (signalSemaphore) |x| x._semaphore else null;
     const nativeFence = if (signalFence) |x| x._fence else null;
     var index: u32 = undefined;
@@ -51,6 +51,17 @@ pub fn AcquireFramebufferIndex(this: *const @This(), signalSemaphore: ?*Semaphor
         VK.Error.VK_SUBOPTIMAL_KHR, VK.Error.VK_ERROR_OUT_OF_DATE_KHR => return error.DisplayOutOfDate,
         else => return err,
     }
+}
+
+pub fn ReleaseFramebufferIndex(this: *@This(), index: u32) !void {
+    const releaseInfo: c.VkReleaseSwapchainImagesInfoKHR = .{
+        .sType = c.VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_KHR,
+        .swapchain = this._swapchain,
+        .imageIndexCount = 1,
+        .pImageIndices = &index,
+    };
+
+    try VK.Try(vkReleaseSwapchainImagesEXT(this.device._device, &releaseInfo));
 }
 
 // TODO: allow for multiple semaphores and fences
@@ -208,3 +219,12 @@ fn ChooseSwapExtent(this: *const @This()) !c.VkExtent2D {
 }
 
 pub const CreateRenderPass = RenderPass.Create;
+
+fn vkReleaseSwapchainImagesEXT(device: ?*c.struct_VkDevice_T, pReleaseInfo: [*c]const c.struct_VkReleaseSwapchainImagesInfoKHR) c.VkResult {
+    const func = @as(c.PFN_vkReleaseSwapchainImagesEXT, @ptrCast(c.vkGetDeviceProcAddr(device, "vkReleaseSwapchainImagesEXT")));
+    if (func != null) {
+        return func.?(device, pReleaseInfo);
+    } else {
+        return c.VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+}
