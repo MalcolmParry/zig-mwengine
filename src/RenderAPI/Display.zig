@@ -1,127 +1,128 @@
 const std = @import("std");
 const Profiler = @import("../Profiler.zig");
-const VK = @import("Vulkan.zig");
+const vk = @import("vulkan.zig");
 const Device = @import("Device.zig");
-const Platform = @import("../Platform.zig");
+const platform = @import("../platform.zig");
 const RenderPass = @import("RenderPass.zig");
-const Semaphore = @import("WaitObjects.zig").Semaphore;
-const Fence = @import("WaitObjects.zig").Fence;
+const Semaphore = @import("wait_objects.zig").Semaphore;
+const Fence = @import("wait_objects.zig").Fence;
 const Image = @import("Image.zig");
-const c = VK.c;
+const c = vk.c;
 
 device: *Device,
-imageSize: @Vector(2, u32),
+image_size: @Vector(2, u32),
 images: []Image,
-imageViews: []Image.View,
+image_views: []Image.View,
 _surface: c.VkSurfaceKHR,
-_surfaceFormat: c.VkSurfaceFormatKHR,
+_surface_format: c.VkSurfaceFormatKHR,
 _swapchain: c.VkSwapchainKHR,
 
-pub fn Create(device: *Device, window: *Platform.Window, alloc: std.mem.Allocator) !@This() {
+pub fn init(device: *Device, window: *platform.Window, alloc: std.mem.Allocator) !@This() {
     var this: @This() = undefined;
     this.device = device;
-    this.imageSize = window.GetClientSize();
+    this.image_size = window.getClientSize();
 
-    const nativeInstance: c.VkInstance = device.instance._instance;
-    this._surface = try Platform.Vulkan.CreateSurface(window, nativeInstance);
-    this._surfaceFormat = try ChooseSurfaceFormat(&this, alloc);
+    this._surface = try platform.vulkan.createSurface(window, device.instance._instance);
+    this._surface_format = try chooseSurfaceFormat(&this, alloc);
     this._swapchain = null;
-    try this.CreateSwapchain(alloc);
+    try this.createSwapchain(alloc);
 
     return this;
 }
 
-pub fn Destroy(this: *@This(), alloc: std.mem.Allocator) void {
-    var prof = Profiler.StartFuncProfiler(@src());
-    defer prof.Stop();
+pub fn deinit(this: *@This(), alloc: std.mem.Allocator) void {
+    var prof = Profiler.startFuncProfiler(@src());
+    defer prof.stop();
 
-    this.DestroySwapchain(alloc);
+    this.destroySwapchain(alloc);
     c.vkDestroySwapchainKHR(this.device._device, this._swapchain, null);
     c.vkDestroySurfaceKHR(this.device.instance._instance, this._surface, null);
 }
 
-pub fn AcquireFramebufferIndex(this: *@This(), signalSemaphore: ?*Semaphore, signalFence: ?*Fence, timeoutNs: u64) !u32 {
-    const nativeSemaphore = if (signalSemaphore) |x| x._semaphore else null;
-    const nativeFence = if (signalFence) |x| x._fence else null;
+pub const initRenderPass = RenderPass.init;
+
+pub fn acquireFramebufferIndex(this: *@This(), signal_semaphore: ?*Semaphore, signal_fence: ?*Fence, timeout_ns: u64) !u32 {
+    const native_semaphore = if (signal_semaphore) |x| x._semaphore else null;
+    const native_fence = if (signal_fence) |x| x._fence else null;
     var index: u32 = undefined;
 
-    if (VK.Try(c.vkAcquireNextImageKHR(this.device._device, this._swapchain, timeoutNs, nativeSemaphore, nativeFence, &index))) {
+    if (vk.wrap(c.vkAcquireNextImageKHR(this.device._device, this._swapchain, timeout_ns, native_semaphore, native_fence, &index))) {
         return index;
     } else |err| switch (err) {
-        VK.Error.VK_SUBOPTIMAL_KHR, VK.Error.VK_ERROR_OUT_OF_DATE_KHR => return error.DisplayOutOfDate,
+        vk.Error.VK_SUBOPTIMAL_KHR, vk.Error.VK_ERROR_OUT_OF_DATE_KHR => return error.DisplayOutOfDate,
         else => return err,
     }
 }
 
-pub fn ReleaseFramebufferIndex(this: *@This(), index: u32) !void {
-    const releaseInfo: c.VkReleaseSwapchainImagesInfoKHR = .{
+pub fn releaseFramebufferIndex(this: *@This(), index: u32) !void {
+    const release_info: c.VkReleaseSwapchainImagesInfoKHR = .{
         .sType = c.VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_KHR,
         .swapchain = this._swapchain,
         .imageIndexCount = 1,
         .pImageIndices = &index,
     };
 
-    try VK.Try(vkReleaseSwapchainImagesEXT(this.device._device, &releaseInfo));
+    try vk.wrap(vkReleaseSwapchainImagesEXT(this.device._device, &release_info));
 }
 
 // TODO: allow for multiple semaphores and fences
-pub fn PresentFramebuffer(this: *@This(), index: u32, waitSemaphore: ?*Semaphore, signalFence: ?*Fence) !void {
-    const nativeSemaphore = if (waitSemaphore) |x| &x._semaphore else null;
+pub fn presentFramebuffer(this: *@This(), index: u32, wait_semaphore: ?*Semaphore, signal_fence: ?*Fence) !void {
+    const native_semaphore = if (wait_semaphore) |x| &x._semaphore else null;
 
-    const presentFenceInfo: ?c.VkSwapchainPresentFenceInfoKHR = if (signalFence) |x| .{
+    const present_fence_info: ?c.VkSwapchainPresentFenceInfoKHR = if (signal_fence) |x| .{
         .sType = c.VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR,
         .swapchainCount = 1,
         .pFences = &x._fence,
     } else null;
 
-    const presentInfo: c.VkPresentInfoKHR = .{
+    const present_info: c.VkPresentInfoKHR = .{
         .sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-        .waitSemaphoreCount = if (waitSemaphore) |_| 1 else 0,
-        .pWaitSemaphores = nativeSemaphore,
+        .waitSemaphoreCount = if (wait_semaphore) |_| 1 else 0,
+        .pWaitSemaphores = native_semaphore,
         .swapchainCount = 1,
         .pSwapchains = &this._swapchain,
         .pImageIndices = &index,
         .pResults = null,
-        .pNext = if (signalFence) |_| &presentFenceInfo.? else null,
+        .pNext = if (signal_fence) |_| &present_fence_info.? else null,
     };
 
-    if (VK.Try(c.vkQueuePresentKHR(this.device._graphicsQueue, &presentInfo))) {} else |err| switch (err) {
-        VK.Error.VK_SUBOPTIMAL_KHR, VK.Error.VK_ERROR_OUT_OF_DATE_KHR => return error.DisplayOutOfDate,
+    if (vk.wrap(c.vkQueuePresentKHR(this.device._graphicsQueue, &present_info))) {} else |err| switch (err) {
+        vk.Error.VK_SUBOPTIMAL_KHR, vk.Error.VK_ERROR_OUT_OF_DATE_KHR => return error.DisplayOutOfDate,
         else => return err,
     }
 }
 
-pub fn Rebuild(this: *@This(), imageSize: @Vector(2, u32), alloc: std.mem.Allocator) !void {
-    const oldSwapchain = this._swapchain;
+pub fn rebuild(this: *@This(), image_size: @Vector(2, u32), alloc: std.mem.Allocator) !void {
+    const old_swapchain = this._swapchain;
     this.DestroySwapchain(alloc);
-    this.imageSize = imageSize;
+    this.image_size = image_size;
     try this.CreateSwapchain(alloc);
-    c.vkDestroySwapchainKHR(this.device._device, oldSwapchain, null);
+    c.vkDestroySwapchainKHR(this.device._device, old_swapchain, null);
 }
 
-fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
-    var prof = Profiler.StartFuncProfiler(@src());
-    defer prof.Stop();
+fn createSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
+    var prof = Profiler.startFuncProfiler(@src());
+    defer prof.stop();
 
-    const oldSwapchain: c.VkSwapchainKHR = this._swapchain;
+    const old_swapchain: c.VkSwapchainKHR = this._swapchain;
 
     var capabilities: c.VkSurfaceCapabilitiesKHR = undefined;
-    try VK.Try(c.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(this.device.physical._device, this._surface, &capabilities));
+    try vk.wrap(c.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(this.device.physical._device, this._surface, &capabilities));
 
-    var minImageCount = capabilities.minImageCount + 1;
-    if (capabilities.maxImageCount > 0 and minImageCount > capabilities.maxImageCount) {
-        minImageCount = capabilities.maxImageCount;
+    var min_image_count = capabilities.minImageCount + 1;
+    if (capabilities.maxImageCount > 0 and min_image_count > capabilities.maxImageCount) {
+        min_image_count = capabilities.maxImageCount;
     }
 
-    const imageFormat = try ChooseSurfaceFormat(this, alloc);
-    const extent = try ChooseSwapExtent(this);
+    const image_format = try chooseSurfaceFormat(this, alloc);
+    const extent = try chooseSwapExtent(this);
 
-    const createInfo: c.VkSwapchainCreateInfoKHR = .{
+    const create_info: c.VkSwapchainCreateInfoKHR = .{
         .sType = c.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = this._surface,
-        .minImageCount = minImageCount,
-        .imageFormat = imageFormat.format,
-        .imageColorSpace = imageFormat.colorSpace,
+        .minImageCount = min_image_count,
+        .imageFormat = image_format.format,
+        .imageColorSpace = image_format.colorSpace,
         .imageExtent = extent,
         .imageArrayLayers = 1,
         .imageUsage = c.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
@@ -132,18 +133,18 @@ fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
         .compositeAlpha = c.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode = c.VK_PRESENT_MODE_IMMEDIATE_KHR, // TODO: allow change
         .clipped = 1,
-        .oldSwapchain = oldSwapchain,
+        .oldSwapchain = old_swapchain,
     };
 
-    try VK.Try(c.vkCreateSwapchainKHR(this.device._device, &createInfo, null, &this._swapchain));
+    try vk.wrap(c.vkCreateSwapchainKHR(this.device._device, &create_info, null, &this._swapchain));
 
-    var imageCount: u32 = undefined;
-    try VK.Try(c.vkGetSwapchainImagesKHR(this.device._device, this._swapchain, &imageCount, null));
-    const images = try alloc.alloc(c.VkImage, imageCount);
+    var image_count: u32 = undefined;
+    try vk.wrap(c.vkGetSwapchainImagesKHR(this.device._device, this._swapchain, &image_count, null));
+    const images = try alloc.alloc(c.VkImage, image_count);
     defer alloc.free(images);
-    try VK.Try(c.vkGetSwapchainImagesKHR(this.device._device, this._swapchain, &imageCount, images.ptr));
+    try vk.wrap(c.vkGetSwapchainImagesKHR(this.device._device, this._swapchain, &image_count, images.ptr));
 
-    this.images = try alloc.alloc(Image, imageCount);
+    this.images = try alloc.alloc(Image, image_count);
     errdefer alloc.free(this.images);
     for (this.images, 0..) |*image, i| {
         image.* = .{
@@ -151,19 +152,19 @@ fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
         };
     }
 
-    this.imageViews = try alloc.alloc(Image.View, imageCount);
-    errdefer alloc.free(this.imageViews);
-    for (this.images, this.imageViews) |*image, *imageView| {
+    this.image_views = try alloc.alloc(Image.View, image_count);
+    errdefer alloc.free(this.image_views);
+    for (this.images, this.image_views) |*image, *imageView| {
         imageView.* = .{
             .device = this.device,
-            ._imageView = null,
+            ._image_view = null,
         };
 
-        const viewCreateInfo: c.VkImageViewCreateInfo = .{
+        const view_create_info: c.VkImageViewCreateInfo = .{
             .sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = image._image,
             .viewType = c.VK_IMAGE_VIEW_TYPE_2D, // TODO: allow for different types
-            .format = imageFormat.format,
+            .format = image_format.format,
             .subresourceRange = .{
                 .aspectMask = c.VK_IMAGE_ASPECT_COLOR_BIT,
                 .baseMipLevel = 0, // TODO: allow for mip mapping
@@ -173,28 +174,28 @@ fn CreateSwapchain(this: *@This(), alloc: std.mem.Allocator) !void {
             },
         };
 
-        try VK.Try(c.vkCreateImageView(this.device._device, &viewCreateInfo, null, &imageView._imageView));
+        try vk.wrap(c.vkCreateImageView(this.device._device, &view_create_info, null, &imageView._image_view));
     }
 }
 
-fn DestroySwapchain(this: *@This(), alloc: std.mem.Allocator) void {
-    for (this.imageViews) |*imageView| {
-        c.vkDestroyImageView(this.device._device, imageView._imageView, null);
+fn destroySwapchain(this: *@This(), alloc: std.mem.Allocator) void {
+    for (this.image_views) |*imageView| {
+        c.vkDestroyImageView(this.device._device, imageView._image_view, null);
     }
 
-    alloc.free(this.imageViews);
+    alloc.free(this.image_views);
     alloc.free(this.images);
 }
 
-fn ChooseSurfaceFormat(this: *const @This(), alloc: std.mem.Allocator) !c.VkSurfaceFormatKHR {
-    var formatCount: u32 = 0;
-    try VK.Try(c.vkGetPhysicalDeviceSurfaceFormatsKHR(this.device.physical._device, this._surface, &formatCount, null));
-    if (formatCount == 0)
+fn chooseSurfaceFormat(this: *const @This(), alloc: std.mem.Allocator) !c.VkSurfaceFormatKHR {
+    var format_count: u32 = 0;
+    try vk.wrap(c.vkGetPhysicalDeviceSurfaceFormatsKHR(this.device.physical._device, this._surface, &format_count, null));
+    if (format_count == 0)
         return error.NoFormat;
 
-    const formats = try alloc.alloc(c.VkSurfaceFormatKHR, formatCount);
+    const formats = try alloc.alloc(c.VkSurfaceFormatKHR, format_count);
     defer alloc.free(formats);
-    try VK.Try(c.vkGetPhysicalDeviceSurfaceFormatsKHR(this.device.physical._device, this._surface, &formatCount, formats.ptr));
+    try vk.wrap(c.vkGetPhysicalDeviceSurfaceFormatsKHR(this.device.physical._device, this._surface, &format_count, formats.ptr));
 
     for (formats) |format| {
         if (format.format == c.VK_FORMAT_B8G8R8A8_SRGB and format.colorSpace == c.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
@@ -205,20 +206,18 @@ fn ChooseSurfaceFormat(this: *const @This(), alloc: std.mem.Allocator) !c.VkSurf
     return formats[0];
 }
 
-fn ChooseSwapExtent(this: *const @This()) !c.VkExtent2D {
+fn chooseSwapExtent(this: *const @This()) !c.VkExtent2D {
     var capabilities: c.VkSurfaceCapabilitiesKHR = undefined;
-    try VK.Try(c.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(this.device.physical._device, this._surface, &capabilities));
+    try vk.wrap(c.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(this.device.physical._device, this._surface, &capabilities));
 
     if (capabilities.currentExtent.width != std.math.maxInt(u32))
         return capabilities.currentExtent;
 
     return .{
-        .width = std.math.clamp(this.imageSize[0], capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-        .height = std.math.clamp(this.imageSize[1], capabilities.minImageExtent.height, capabilities.maxImageExtent.height),
+        .width = std.math.clamp(this.image_size[0], capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+        .height = std.math.clamp(this.image_size[1], capabilities.minImageExtent.height, capabilities.maxImageExtent.height),
     };
 }
-
-pub const CreateRenderPass = RenderPass.Create;
 
 fn vkReleaseSwapchainImagesEXT(device: ?*c.struct_VkDevice_T, pReleaseInfo: [*c]const c.struct_VkReleaseSwapchainImagesInfoKHR) c.VkResult {
     const func = @as(c.PFN_vkReleaseSwapchainImagesEXT, @ptrCast(c.vkGetDeviceProcAddr(device, "vkReleaseSwapchainImagesEXT")));

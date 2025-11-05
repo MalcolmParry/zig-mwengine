@@ -1,8 +1,8 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const Platform = @import("../Platform.zig");
+const platform = @import("../platform.zig");
 
-pub const Utils = @import("Utils.zig");
+pub const utils = @import("utils.zig");
 
 pub const c = @cImport({
     switch (builtin.os.tag) {
@@ -13,12 +13,13 @@ pub const c = @cImport({
     @cInclude("vulkan/vulkan.h");
 });
 
-pub const requiredExtensions = Platform.Vulkan.requiredExtensions ++ .{
+pub const required_extensions = platform.vulkan.required_extensions ++ .{
     c.VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
     c.VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME,
     c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
 };
-pub const requiredDeviceExtensions: [2][*:0]const u8 = .{
+
+pub const required_device_extensions: [2][*:0]const u8 = .{
     c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     c.VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
 };
@@ -74,7 +75,7 @@ pub const Error = error{
     VK_ERROR_NOT_ENOUGH_SPACE_KHR,
 };
 
-pub fn Try(result: c.VkResult) Error!void {
+pub fn wrap(result: c.VkResult) Error!void {
     if (result == c.VK_SUCCESS) {
         return;
     }

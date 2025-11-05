@@ -1,7 +1,5 @@
-const std = @import("std");
-
 pub const Type = enum {
-    Closed,
+    closed,
 };
 
 type: Type,

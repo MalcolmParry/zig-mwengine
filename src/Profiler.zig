@@ -1,5 +1,5 @@
 const std = @import("std");
-const buildOptions = @import("build-options");
+const build_options = @import("build-options");
 
 pub var global: ?*@This() = null;
 
@@ -9,7 +9,7 @@ alloc: std.mem.Allocator,
 
 const Profiler = @This();
 
-pub fn Create(alloc: std.mem.Allocator) !@This() {
+pub fn init(alloc: std.mem.Allocator) !@This() {
     var this: @This() = undefined;
     this.alloc = alloc;
     this.start = try std.time.Instant.now();
@@ -18,15 +18,15 @@ pub fn Create(alloc: std.mem.Allocator) !@This() {
     return this;
 }
 
-pub fn Destroy(this: *@This()) void {
+pub fn deinit(this: *@This()) void {
     this.profiles.deinit();
 }
 
-pub fn WriteProfile(this: *@This(), profileResult: ProfileResult) !void {
+pub fn writeProfile(this: *@This(), profileResult: ProfileResult) !void {
     try this.profiles.append(profileResult);
 }
 
-pub fn WriteToFile(this: *@This(), filepath: []const u8) !void {
+pub fn writeToFile(this: *@This(), filepath: []const u8) !void {
     const file = try std.fs.cwd().createFile(filepath, .{ .truncate = true });
     defer file.close();
 
@@ -48,7 +48,7 @@ pub fn WriteToFile(this: *@This(), filepath: []const u8) !void {
 
         try writer.print(
             \\{{"cat":"function","dur":{},"name":"{s}","ph":"X","pid":0,"tid":{},"ts":{}}}
-        , .{ profile.end.since(profile.start) / std.time.ns_per_us, newName, profile.threadId, profile.start.since(this.start) / std.time.ns_per_us });
+        , .{ profile.end.since(profile.start) / std.time.ns_per_us, newName, profile.thread_id, profile.start.since(this.start) / std.time.ns_per_us });
     }
 
     _ = try writer.write("]}");
@@ -56,7 +56,7 @@ pub fn WriteToFile(this: *@This(), filepath: []const u8) !void {
 
 const ProfileResult = struct {
     name: []const u8,
-    threadId: u64,
+    thread_id: u64,
     start: std.time.Instant,
     end: std.time.Instant,
 };
@@ -65,37 +65,33 @@ pub const Timed = struct {
     profiler: *Profiler,
     result: ProfileResult,
 
-    pub fn Start(profiler: *Profiler, name: []const u8, threadId: u64) !@This() {
+    pub fn start(profiler: *Profiler, name: []const u8, thread_id: u64) !@This() {
         var this: @This() = undefined;
         this.profiler = profiler;
         this.result.name = name;
-        this.result.threadId = threadId;
+        this.result.thread_id = thread_id;
         this.result.start = try std.time.Instant.now();
         this.result.end = this.result.start;
         return this;
     }
 
-    pub fn Stop(this: *@This()) void {
+    pub fn stop(this: *@This()) void {
         this.result.end = std.time.Instant.now() catch @panic("error in profiler");
-        this.profiler.WriteProfile(this.result) catch {
+        this.profiler.writeProfile(this.result) catch {
             @panic("error in profiler");
         };
     }
 };
 
 const Blank = struct {
-    pub fn Stop(_: @This()) void {}
+    pub fn stop(_: @This()) void {}
 };
 
-const FuncProfiler = if (buildOptions.profiling) Timed else Blank;
+const FuncProfiler = if (build_options.profiling) Timed else Blank;
 
-threadlocal var tid: ?std.Thread.Id = null;
-
-pub fn StartFuncProfiler(comptime src: std.builtin.SourceLocation) FuncProfiler {
-    if (comptime !buildOptions.profiling)
+pub fn startFuncProfiler(comptime src: std.builtin.SourceLocation) FuncProfiler {
+    if (comptime !build_options.profiling)
         return Blank{};
 
-    tid = tid orelse std.Thread.getCurrentId();
-
-    return Timed.Start(global.?, src.fn_name ++ " from " ++ src.file, tid.?) catch @panic("error in profiler");
+    return Timed.start(global.?, src.fn_name ++ " from " ++ src.file, std.Thread.getCurrentId()) catch @panic("error in profiler");
 }

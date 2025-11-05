@@ -1,87 +1,87 @@
 const std = @import("std");
 const Profiler = @import("../Profiler.zig");
-const Platform = @import("../Platform.zig");
-const VK = @import("Vulkan.zig");
+const vk = @import("vulkan.zig");
 const Device = @import("Device.zig");
 
-const c = VK.c;
+const c = vk.c;
 
-const validationExtensions: [1][*:0]const u8 = .{
+const validation_extensions: [1][*:0]const u8 = .{
     c.VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 };
 
 _instance: c.VkInstance,
-_debugMessenger: c.VkDebugUtilsMessengerEXT,
-_physicalDevices: []Device.Physical,
+_debug_messenger: c.VkDebugUtilsMessengerEXT,
+_physical_devices: []Device.Physical,
 
 //  TODO: add app version to paramerers
-pub fn Create(debugLogging: bool, alloc: std.mem.Allocator) !@This() {
-    var prof = Profiler.StartFuncProfiler(@src());
-    defer prof.Stop();
+pub fn init(debug_logging: bool, alloc: std.mem.Allocator) !@This() {
+    var prof = Profiler.startFuncProfiler(@src());
+    defer prof.stop();
 
     var this: @This() = undefined;
 
-    const appInfo: c.VkApplicationInfo = .{
+    const app_info: c.VkApplicationInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = "placeholder",
         .applicationVersion = 0,
         .pEngineName = "mwengine",
+        .engineVersion = 0, // TODO: fill in
         .apiVersion = c.VK_API_VERSION_1_0,
     };
 
     // TODO: check extention support
-    const validationLayer: [*]const u8 = "VK_LAYER_KHRONOS_validation";
-    const extensions = VK.requiredExtensions;
-    const debugExtensions = extensions ++ validationExtensions;
+    const validation_layer: [*]const u8 = "VK_LAYER_KHRONOS_validation";
+    const extensions = vk.required_extensions;
+    const debug_extensions = extensions ++ validation_extensions;
 
-    const instanceCreateInfo: c.VkInstanceCreateInfo = .{
+    const instance_create_info: c.VkInstanceCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-        .pApplicationInfo = &appInfo,
-        .enabledExtensionCount = if (debugLogging) debugExtensions.len else extensions.len,
-        .ppEnabledExtensionNames = if (debugLogging) &debugExtensions else &extensions,
-        .enabledLayerCount = if (debugLogging) 1 else 0,
-        .ppEnabledLayerNames = if (debugLogging) &validationLayer else null,
+        .pApplicationInfo = &app_info,
+        .enabledExtensionCount = if (debug_logging) debug_extensions.len else extensions.len,
+        .ppEnabledExtensionNames = if (debug_logging) &debug_extensions else &extensions,
+        .enabledLayerCount = if (debug_logging) 1 else 0,
+        .ppEnabledLayerNames = if (debug_logging) &validation_layer else null,
     };
 
-    try VK.Try(c.vkCreateInstance(&instanceCreateInfo, null, &this._instance));
+    try vk.wrap(c.vkCreateInstance(&instance_create_info, null, &this._instance));
     errdefer c.vkDestroyInstance(this._instance, null);
 
-    if (debugLogging) {
-        const debugMessengerCreateInfo: c.VkDebugUtilsMessengerCreateInfoEXT = .{
+    if (debug_logging) {
+        const debug_messenger_create_info: c.VkDebugUtilsMessengerCreateInfoEXT = .{
             .sType = c.VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
             .messageSeverity = c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
             .messageType = c.VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | c.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | c.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-            .pfnUserCallback = DebugMessengerCallback,
+            .pfnUserCallback = debugMessengerCallback,
             .pUserData = null,
         };
 
-        try VK.Try(vkCreateDebugUtilsMessengerEXT(this._instance, &debugMessengerCreateInfo, null, &this._debugMessenger));
+        try vk.wrap(vkCreateDebugUtilsMessengerEXT(this._instance, &debug_messenger_create_info, null, &this._debug_messenger));
     } else {
-        this._debugMessenger = null;
+        this._debug_messenger = null;
     }
 
-    errdefer if (debugLogging) vkDestroyDebugUtilsMessengerEXT(this._instance, this._debugMessenger, null);
+    errdefer if (debug_logging) vkDestroyDebugUtilsMessengerEXT(this._instance, this._debug_messenger, null);
 
-    var deviceCount: u32 = 0;
-    try VK.Try(c.vkEnumeratePhysicalDevices(this._instance, &deviceCount, null));
-    const nativePhysicalDevices = try alloc.alloc(c.VkPhysicalDevice, deviceCount);
-    defer alloc.free(nativePhysicalDevices);
-    try VK.Try(c.vkEnumeratePhysicalDevices(this._instance, &deviceCount, nativePhysicalDevices.ptr));
-    this._physicalDevices = try alloc.alloc(Device.Physical, deviceCount);
-    errdefer alloc.free(this._physicalDevices);
+    var device_count: u32 = 0;
+    try vk.wrap(c.vkEnumeratePhysicalDevices(this._instance, &device_count, null));
+    const native_physical_devices = try alloc.alloc(c.VkPhysicalDevice, device_count);
+    defer alloc.free(native_physical_devices);
+    try vk.wrap(c.vkEnumeratePhysicalDevices(this._instance, &device_count, native_physical_devices.ptr));
+    this._physical_devices = try alloc.alloc(Device.Physical, device_count);
+    errdefer alloc.free(this._physical_devices);
 
-    for (0..deviceCount) |i| {
-        const device = &this._physicalDevices[i];
-        device._device = nativePhysicalDevices[i];
+    for (0..device_count) |i| {
+        const device = &this._physical_devices[i];
+        device._device = native_physical_devices[i];
 
-        var queueFamilyCount: u32 = 0;
-        c.vkGetPhysicalDeviceQueueFamilyProperties(device._device, &queueFamilyCount, null);
-        const queueFamilies = try alloc.alloc(c.VkQueueFamilyProperties, queueFamilyCount);
-        defer alloc.free(queueFamilies);
-        c.vkGetPhysicalDeviceQueueFamilyProperties(device._device, &queueFamilyCount, queueFamilies.ptr);
+        var queue_family_count: u32 = 0;
+        c.vkGetPhysicalDeviceQueueFamilyProperties(device._device, &queue_family_count, null);
+        const queue_families = try alloc.alloc(c.VkQueueFamilyProperties, queue_family_count);
+        defer alloc.free(queue_families);
+        c.vkGetPhysicalDeviceQueueFamilyProperties(device._device, &queue_family_count, queue_families.ptr);
         std.debug.print("\n", .{});
 
-        for (queueFamilies) |prop| {
+        for (queue_families) |prop| {
             std.debug.print("queue family {}: ", .{prop.queueCount});
 
             if (prop.queueFlags & c.VK_QUEUE_GRAPHICS_BIT > 0) {
@@ -105,26 +105,26 @@ pub fn Create(debugLogging: bool, alloc: std.mem.Allocator) !@This() {
     return this;
 }
 
-pub fn Destroy(this: *@This(), alloc: std.mem.Allocator) void {
-    var prof = Profiler.StartFuncProfiler(@src());
-    defer prof.Stop();
+pub fn deinit(this: *@This(), alloc: std.mem.Allocator) void {
+    var prof = Profiler.startFuncProfiler(@src());
+    defer prof.stop();
 
-    alloc.free(this._physicalDevices);
-    if (this._debugMessenger != null) vkDestroyDebugUtilsMessengerEXT(this._instance, this._debugMessenger, null);
+    alloc.free(this._physical_devices);
+    if (this._debug_messenger != null) vkDestroyDebugUtilsMessengerEXT(this._instance, this._debug_messenger, null);
     c.vkDestroyInstance(this._instance, null);
 }
 
-pub const CreateDevice = Device.Create;
+pub const initDevice = Device.init;
 
-pub fn BestPhysicalDevice(this: *const @This(), alloc: std.mem.Allocator) !Device.Physical {
-    var prof = Profiler.StartFuncProfiler(@src());
-    defer prof.Stop();
+pub fn bestPhysicalDevice(this: *const @This(), alloc: std.mem.Allocator) !Device.Physical {
+    var prof = Profiler.startFuncProfiler(@src());
+    defer prof.stop();
 
     _ = alloc;
 
-    var bestDevice: ?Device.Physical = null;
-    var bestScore: i32 = -1;
-    for (this._physicalDevices) |device| {
+    var best_device: ?Device.Physical = null;
+    var best_score: i32 = -1;
+    for (this._physical_devices) |device| {
         var properties: c.VkPhysicalDeviceProperties = undefined;
         var features: c.VkPhysicalDeviceFeatures = undefined;
         c.vkGetPhysicalDeviceProperties(device._device, &properties);
@@ -139,32 +139,32 @@ pub fn BestPhysicalDevice(this: *const @This(), alloc: std.mem.Allocator) !Devic
         score += @intCast(properties.limits.maxImageDimension2D);
 
         std.debug.print("Device ({}): {s}\n", .{ score, properties.deviceName });
-        if (score > bestScore) {
-            bestScore = score;
-            bestDevice = device;
+        if (score > best_score) {
+            best_score = score;
+            best_device = device;
         }
     }
 
-    if (bestScore == -1) bestDevice = null;
-    return bestDevice orelse error.NoDeviceAvailable;
+    if (best_score == -1) best_device = null;
+    return best_device orelse error.NoDeviceAvailable;
 }
 
-fn DebugMessengerCallback(messageSeverity: c.VkDebugUtilsMessageSeverityFlagBitsEXT, messageType: c.VkDebugUtilsMessageTypeFlagsEXT, callbackData: ?*const c.VkDebugUtilsMessengerCallbackDataEXT, userData: ?*anyopaque) callconv(.c) c.VkBool32 {
-    _ = messageType;
-    _ = userData;
+fn debugMessengerCallback(message_severity: c.VkDebugUtilsMessageSeverityFlagBitsEXT, message_type: c.VkDebugUtilsMessageTypeFlagsEXT, callback_data: ?*const c.VkDebugUtilsMessengerCallbackDataEXT, context: ?*anyopaque) callconv(.c) c.VkBool32 {
+    _ = message_type;
+    _ = context;
 
-    switch (messageSeverity) {
+    switch (message_severity) {
         c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT, c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT => {
-            std.debug.print("VULKAN INFO: {s}\n", .{callbackData.?.pMessage});
+            std.debug.print("VULKAN INFO: {s}\n", .{callback_data.?.pMessage});
         },
         c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT => {
-            std.debug.print("VULKAN ERROR: {s}\n", .{callbackData.?.pMessage});
+            std.debug.print("VULKAN ERROR: {s}\n", .{callback_data.?.pMessage});
         },
         c.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT => {
-            std.debug.print("VULKAN WARN: {s}\n", .{callbackData.?.pMessage});
+            std.debug.print("VULKAN WARN: {s}\n", .{callback_data.?.pMessage});
         },
         else => {
-            std.debug.print("VULKAN: {s}\n", .{callbackData.?.pMessage});
+            std.debug.print("VULKAN: {s}\n", .{callback_data.?.pMessage});
         },
     }
 

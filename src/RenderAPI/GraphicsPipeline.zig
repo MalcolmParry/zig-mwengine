@@ -1,63 +1,63 @@
 const std = @import("std");
 const Profiler = @import("../Profiler.zig");
-const VK = @import("Vulkan.zig");
+const vk = @import("vulkan.zig");
 const Device = @import("Device.zig");
 const RenderPass = @import("RenderPass.zig");
 const Shader = @import("Shader.zig");
-const c = VK.c;
+const c = vk.c;
 
 const GraphicsPipeline = @This();
 
 device: *const Device,
 _pipeline: c.VkPipeline,
-_pipelineLayout: c.VkPipelineLayout,
-vertexCount: u32,
+_pipeline_layout: c.VkPipelineLayout,
+vertex_count: u32,
 
-pub fn Create(createInfo: CreateInfo) !@This() {
-    var prof = Profiler.StartFuncProfiler(@src());
-    defer prof.Stop();
+pub fn init(create_info: CreateInfo) !@This() {
+    var prof = Profiler.startFuncProfiler(@src());
+    defer prof.stop();
 
     var this: @This() = undefined;
-    this.device = createInfo.device;
-    this.vertexCount = createInfo.vertexCount;
+    this.device = create_info.device;
+    this.vertex_count = create_info.vertex_count;
 
     const extent: c.VkExtent2D = .{
-        .width = createInfo.framebufferSize[0],
-        .height = createInfo.framebufferSize[1],
+        .width = create_info.framebuffer_size[0],
+        .height = create_info.framebuffer_size[1],
     };
 
     // TODO: add per vertex data
-    const vertexShaderStageInfo: c.VkPipelineShaderStageCreateInfo = .{
+    const vertex_shader_stage_info: c.VkPipelineShaderStageCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = c.VK_SHADER_STAGE_VERTEX_BIT,
-        .module = createInfo.shaderSet.vertex._shaderModule,
+        .module = create_info.shader_set.vertex._shader_module,
         .pName = "main",
     };
 
-    const fragmentShaderStageInfo: c.VkPipelineShaderStageCreateInfo = .{
+    const fragment_shader_stage_info: c.VkPipelineShaderStageCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = c.VK_SHADER_STAGE_FRAGMENT_BIT,
-        .module = createInfo.shaderSet.pixel._shaderModule,
+        .module = create_info.shader_set.pixel._shader_module,
         .pName = "main",
     };
 
-    const shaderStages: [2]c.VkPipelineShaderStageCreateInfo = .{
-        vertexShaderStageInfo,
-        fragmentShaderStageInfo,
+    const shader_stages: [2]c.VkPipelineShaderStageCreateInfo = .{
+        vertex_shader_stage_info,
+        fragment_shader_stage_info,
     };
 
-    const dynamicStates: [2]c.VkDynamicState = .{
+    const dynamic_states: [2]c.VkDynamicState = .{
         c.VK_DYNAMIC_STATE_VIEWPORT,
         c.VK_DYNAMIC_STATE_SCISSOR,
     };
 
-    const dynamicStateCreateInfo: c.VkPipelineDynamicStateCreateInfo = .{
+    const dynamic_state_create_info: c.VkPipelineDynamicStateCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .dynamicStateCount = dynamicStates.len,
-        .pDynamicStates = &dynamicStates,
+        .dynamicStateCount = dynamic_states.len,
+        .pDynamicStates = &dynamic_states,
     };
 
-    const vertexInputInfo: c.VkPipelineVertexInputStateCreateInfo = .{
+    const vertex_input_info: c.VkPipelineVertexInputStateCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexAttributeDescriptionCount = 0,
         .pVertexAttributeDescriptions = null,
@@ -65,7 +65,7 @@ pub fn Create(createInfo: CreateInfo) !@This() {
         .pVertexBindingDescriptions = null,
     };
 
-    const inputAssembly: c.VkPipelineInputAssemblyStateCreateInfo = .{
+    const input_assembly: c.VkPipelineInputAssemblyStateCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .topology = c.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, // TODO: allow more options
         .primitiveRestartEnable = c.VK_FALSE, // TODO: implement (allows you to seperate triangle strip)
@@ -85,7 +85,7 @@ pub fn Create(createInfo: CreateInfo) !@This() {
         .extent = extent,
     };
 
-    const viewportState: c.VkPipelineViewportStateCreateInfo = .{
+    const viewport_state: c.VkPipelineViewportStateCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         .viewportCount = 1,
         .pViewports = &viewport,
@@ -117,7 +117,7 @@ pub fn Create(createInfo: CreateInfo) !@This() {
         .alphaToOneEnable = c.VK_FALSE,
     };
 
-    const colorBlendAttachment: c.VkPipelineColorBlendAttachmentState = .{
+    const color_blend_attachment: c.VkPipelineColorBlendAttachmentState = .{
         .colorWriteMask = c.VK_COLOR_COMPONENT_R_BIT | c.VK_COLOR_COMPONENT_G_BIT | c.VK_COLOR_COMPONENT_B_BIT | c.VK_COLOR_COMPONENT_A_BIT,
         .blendEnable = c.VK_FALSE,
         .srcColorBlendFactor = c.VK_BLEND_FACTOR_ONE,
@@ -128,16 +128,16 @@ pub fn Create(createInfo: CreateInfo) !@This() {
         .alphaBlendOp = c.VK_BLEND_OP_ADD,
     };
 
-    const colorBlending: c.VkPipelineColorBlendStateCreateInfo = .{
+    const color_blending: c.VkPipelineColorBlendStateCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .logicOpEnable = c.VK_FALSE,
         .logicOp = c.VK_LOGIC_OP_COPY,
         .attachmentCount = 1,
-        .pAttachments = &colorBlendAttachment,
+        .pAttachments = &color_blend_attachment,
         .blendConstants = .{ 0, 0, 0, 0 },
     };
 
-    const depthStencil: c.VkPipelineDepthStencilStateCreateInfo = .{
+    const depth_stencil: c.VkPipelineDepthStencilStateCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .depthTestEnable = c.VK_FALSE,
         .depthWriteEnable = c.VK_FALSE,
@@ -151,7 +151,7 @@ pub fn Create(createInfo: CreateInfo) !@This() {
     };
 
     // TODO: could be separated into different objects
-    const pipelineLayoutInfo: c.VkPipelineLayoutCreateInfo = .{
+    const pipeline_layout_info: c.VkPipelineLayoutCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = 0, // TODO: add descriptor sets
         .pSetLayouts = null,
@@ -159,44 +159,43 @@ pub fn Create(createInfo: CreateInfo) !@This() {
         .pPushConstantRanges = null,
     };
 
-    try VK.Try(c.vkCreatePipelineLayout(this.device._device, &pipelineLayoutInfo, null, &this._pipelineLayout));
+    try vk.wrap(c.vkCreatePipelineLayout(this.device._device, &pipeline_layout_info, null, &this._pipeline_layout));
 
-    const pipelineInfo: c.VkGraphicsPipelineCreateInfo = .{
+    const pipeline_info: c.VkGraphicsPipelineCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .stageCount = 2,
-        .pStages = &shaderStages,
-        .pVertexInputState = &vertexInputInfo,
-        .pInputAssemblyState = &inputAssembly,
-        .pViewportState = &viewportState,
+        .pStages = &shader_stages,
+        .pVertexInputState = &vertex_input_info,
+        .pInputAssemblyState = &input_assembly,
+        .pViewportState = &viewport_state,
         .pRasterizationState = &rasterizer,
         .pMultisampleState = &multisampling,
-        .pDepthStencilState = &depthStencil,
-        .pColorBlendState = &colorBlending,
-        .pDynamicState = &dynamicStateCreateInfo,
-        .layout = this._pipelineLayout,
-        .renderPass = createInfo.renderPass._renderPass,
+        .pDepthStencilState = &depth_stencil,
+        .pColorBlendState = &color_blending,
+        .pDynamicState = &dynamic_state_create_info,
+        .layout = this._pipeline_layout,
+        .renderPass = create_info.render_pass._render_pass,
         .basePipelineHandle = null,
         .basePipelineIndex = -1,
     };
 
-    try VK.Try(c.vkCreateGraphicsPipelines(createInfo.device._device, null, 1, &pipelineInfo, null, &this._pipeline));
+    try vk.wrap(c.vkCreateGraphicsPipelines(create_info.device._device, null, 1, &pipeline_info, null, &this._pipeline));
 
     return this;
 }
 
-pub fn Destroy(this: *@This()) void {
-    var prof = Profiler.StartFuncProfiler(@src());
-    defer prof.Stop();
+pub fn deinit(this: *@This()) void {
+    var prof = Profiler.startFuncProfiler(@src());
+    defer prof.stop();
 
     c.vkDestroyPipeline(this.device._device, this._pipeline, null);
-    c.vkDestroyPipelineLayout(this.device._device, this._pipelineLayout, null);
+    c.vkDestroyPipelineLayout(this.device._device, this._pipeline_layout, null);
 }
 
 pub const CreateInfo = struct {
     device: *Device,
-    renderPass: *const RenderPass,
-    framebufferSize: @Vector(2, u32),
-    shaderSet: *Shader.Set,
-    vertexCount: u32,
-    oldGraphicsPipeline: ?*GraphicsPipeline,
+    render_pass: *const RenderPass,
+    framebuffer_size: @Vector(2, u32),
+    shader_set: *Shader.Set,
+    vertex_count: u32,
 };
