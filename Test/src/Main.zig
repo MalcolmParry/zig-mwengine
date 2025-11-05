@@ -4,12 +4,12 @@ const mw = @import("mwengine");
 var window: mw.Window = undefined;
 var running: bool = true;
 
-fn EventHandler() !void {
-    while (window.EventPending()) {
-        const event = window.PopEvent() orelse break;
+fn eventHandler() !void {
+    while (window.eventPending()) {
+        const event = window.popEvent() orelse break;
 
         switch (event.type) {
-            .Closed => {
+            .closed => {
                 running = false;
             },
         }
@@ -36,7 +36,7 @@ pub fn main() !void {
     defer device.deinit();
 
     var display = try device.initDisplay(&window, alloc);
-    // const framesInFlight: u32 = @intCast(display.imageViews.len);
+    const frames_in_flight: u32 = @intCast(display.image_views.len);
     defer display.deinit(alloc);
 
     var render_pass = try display.initRenderPass();
@@ -54,52 +54,58 @@ pub fn main() !void {
     //const buffer = try device.CreateBuffer(16, .{ .vertex = true });
     //defer buffer.Destroy();
 
-    var vertexShader = try createShader(&device, "res/Shaders/Triangle.glsl.vert.spv", .vertex, alloc);
-    defer vertexShader.deinit();
+    var vertex_shader = try createShader(&device, "res/Shaders/Triangle.glsl.vert.spv", .vertex, alloc);
+    defer vertex_shader.deinit();
 
-    var pixelShader = try createShader(&device, "res/Shaders/Triangle.glsl.frag.spv", .pixel, alloc);
-    defer pixelShader.deinit();
+    var pixel_shader = try createShader(&device, "res/Shaders/Triangle.glsl.frag.spv", .pixel, alloc);
+    defer pixel_shader.deinit();
 
-    var shader_set = try mw.RAPI.Shader.Set.init(vertexShader, pixelShader, &.{}, alloc);
+    var shader_set = try mw.RAPI.Shader.Set.init(vertex_shader, pixel_shader, &.{}, alloc);
     defer shader_set.deinit();
 
-    var graphicsPipeline = try mw.RAPI.GraphicsPipeline.init(.{
+    var graphics_pipeline = try mw.RAPI.GraphicsPipeline.init(.{
         .device = &device,
         .render_pass = &render_pass,
         .shader_set = &shader_set,
         .vertex_count = 3,
         .framebuffer_size = window.getClientSize(),
     });
-    defer graphicsPipeline.deinit();
+    defer graphics_pipeline.deinit();
 
-    // const commandBuffers = try alloc.alloc(mw.RAPI.CommandBuffer, framesInFlight);
-    // for (commandBuffers) |*commandBuffer| {
-    //     commandBuffer.* = try .Create(&device);
-    // }
-    // defer alloc.free(commandBuffers);
-    // defer for (commandBuffers) |*commandBuffer| {
-    //     commandBuffer.Destroy(&device);
-    // };
-    //
-    // const imageAvailableSemaphores = try alloc.alloc(mw.RAPI.Semaphore, framesInFlight);
-    // for (imageAvailableSemaphores) |*x| {
-    //     x.* = try .Create(&device);
-    // }
-    // defer alloc.free(imageAvailableSemaphores);
-    // defer for (imageAvailableSemaphores) |*x| {
-    //     x.Destroy();
-    // };
-    //
-    // const renderFinishedSemaphores = try alloc.alloc(mw.RAPI.Semaphore, framesInFlight);
-    // for (renderFinishedSemaphores) |*x| {
-    //     x.* = try .Create(&device);
-    // }
-    // defer alloc.free(renderFinishedSemaphores);
-    // defer for (renderFinishedSemaphores) |*x| {
-    //     x.Destroy();
-    // };
-    //
-    // const inFLightFences = try alloc.alloc(mw.RAPI.Fence, framesInFlight);
+    const command_buffers = try alloc.alloc(mw.RAPI.CommandBuffer, frames_in_flight);
+    for (command_buffers) |*command_buffer| {
+        command_buffer.* = try .init(&device);
+    }
+
+    defer {
+        for (command_buffers) |*command_buffer| {
+            command_buffer.deinit(&device);
+        }
+        alloc.free(command_buffers);
+    }
+
+    const image_available_semaphores = try alloc.alloc(mw.RAPI.Semaphore, frames_in_flight);
+    for (image_available_semaphores) |*x| {
+        x.* = try .init(&device);
+    }
+
+    defer {
+        for (image_available_semaphores) |*x| {
+            x.deinit();
+        }
+        alloc.free(image_available_semaphores);
+    }
+
+    const render_finished_semaphores = try alloc.alloc(mw.RAPI.Semaphore, frames_in_flight);
+    for (render_finished_semaphores) |*x| {
+        x.* = try .init(&device);
+    }
+    defer alloc.free(render_finished_semaphores);
+    defer for (render_finished_semaphores) |*x| {
+        x.deinit();
+    };
+
+    // const inFLightFences = try alloc.alloc(mw.RAPI.Fence, frames_in_flight);
     // for (inFLightFences) |*x| {
     //     x.* = try .Create(&device, true);
     // }
@@ -111,9 +117,9 @@ pub fn main() !void {
     // defer device.WaitUntilIdle() catch unreachable;
     // var frame: u32 = 0;
     // while (running) {
-    //     var commandBuffer = commandBuffers[frame];
-    //     var imageAvailableSemaphore = imageAvailableSemaphores[frame];
-    //     var renderFinishedSemaphore = renderFinishedSemaphores[frame];
+    //     var command_buffer = command_buffers[frame];
+    //     var image_available_semaphore = image_available_semaphores[frame];
+    //     var render_finished_semaphore = render_finished_semaphores[frame];
     //     var inFLightFence = inFLightFences[frame];
     //
     //     try inFLightFence.WaitFor(1_000_000_000);
@@ -121,7 +127,7 @@ pub fn main() !void {
     //
     //     var framebufferIndex: u32 = undefined;
     //     while (true) {
-    //         if (display.AcquireFramebufferIndex(&imageAvailableSemaphore, null, 1_000_000_000)) |x| {
+    //         if (display.AcquireFramebufferIndex(&image_available_semaphore, null, 1_000_000_000)) |x| {
     //             framebufferIndex = x;
     //             break;
     //         } else |err| switch (err) {
@@ -141,14 +147,14 @@ pub fn main() !void {
     //     const framebuffer = &framebuffers[framebufferIndex];
     //     // std.log.debug("{}\n", .{framebufferIndex});
     //
-    //     try commandBuffer.Reset();
-    //     try commandBuffer.Begin();
-    //     commandBuffer.QueueBeginRenderPass(&render_pass, framebuffer);
-    //     commandBuffer.QueueDraw(&graphicsPipeline, framebuffer);
-    //     commandBuffer.QueueEndRenderPass();
-    //     try commandBuffer.End();
-    //     try commandBuffer.Submit(&device, &imageAvailableSemaphore, &renderFinishedSemaphore, null);
-    //     display.PresentFramebuffer(framebufferIndex, &renderFinishedSemaphore, &inFLightFence) catch |err| switch (err) {
+    //     try command_buffer.Reset();
+    //     try command_buffer.Begin();
+    //     command_buffer.QueueBeginRenderPass(&render_pass, framebuffer);
+    //     command_buffer.QueueDraw(&graphics_pipeline, framebuffer);
+    //     command_buffer.QueueEndRenderPass();
+    //     try command_buffer.End();
+    //     try command_buffer.Submit(&device, &image_available_semaphore, &render_finished_semaphore, null);
+    //     display.PresentFramebuffer(framebufferIndex, &render_finished_semaphore, &inFLightFence) catch |err| switch (err) {
     //         error.DisplayOutOfDate => {
     //             try device.WaitUntilIdle();
     //             for (framebuffers) |*x| {
@@ -164,7 +170,7 @@ pub fn main() !void {
     //
     //     EventHandler() catch {};
     //
-    //     frame = (frame + 1) % framesInFlight;
+    //     frame = (frame + 1) % frames_in_flight;
     // }
 }
 
