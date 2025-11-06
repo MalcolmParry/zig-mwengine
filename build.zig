@@ -21,7 +21,12 @@ pub fn build(b: *Build) !void {
         .link_libc = true,
     });
 
+    const vulkan = b.dependency("vulkan", .{
+        .registry = b.dependency("vulkan_headers", .{}).path("registry/vk.xml"),
+    }).module("vulkan-zig");
+
     module.addOptions("build-options", opts);
+    module.addImport("vulkan", vulkan);
     module.linkSystemLibrary("X11", .{});
     module.linkSystemLibrary("vulkan", .{});
 

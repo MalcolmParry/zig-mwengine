@@ -6,6 +6,17 @@
         "build.zig",
         "build.zig.zon",
         "src",
+        "examples",
         "LICENSE",
+    },
+    .dependencies = .{
+        .vulkan = .{
+            .url = "git+https://github.com/catmeow72/vulkan-zig.git#8961518db28f88d2cf09ea68e146923de2cfa7f0",
+            .hash = "vulkan-0.0.0-r7Ytx6hBAwD8X_TN32qlkzul4riK6vFvjtK9fZfRvALg",
+        },
+        .vulkan_headers = .{
+            .url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/v1.3.283.tar.gz",
+            .hash = "N-V-__8AAAkkoQGn5z1yoNVrwqZfnYmZp8AZ5CJgoHRMQI0c",
+        },
     },
 }

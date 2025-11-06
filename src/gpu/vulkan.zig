@@ -13,12 +13,6 @@ pub const c = @cImport({
     @cInclude("vulkan/vulkan.h");
 });
 
-pub const required_extensions = platform.vulkan.required_extensions ++ .{
-    c.VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
-    c.VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME,
-    c.VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
-};
-
 pub const required_device_extensions: [2][*:0]const u8 = .{
     c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     c.VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,

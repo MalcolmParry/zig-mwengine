@@ -12,7 +12,7 @@ pub const Window = struct {
     _window: c.Window,
     _wm_delete_message: c.Atom,
 
-    pub fn init(class: []const u8, width: u32, height: u32) !Window {
+    pub fn init(class: []const u8, width: u32, height: u32, alloc: std.mem.Allocator) !Window {
         var this: Window = undefined;
 
         this._display = c.XOpenDisplay(null) orelse return error.FailedToOpenDisplay;
@@ -25,8 +25,8 @@ pub const Window = struct {
         this._wm_delete_message = c.XInternAtom(this._display, "WM_DELETE_WINDOW", 0);
         if (this._wm_delete_message == c.None) return error.FailedToCreateAtom;
 
-        const nt_class = try std.heap.c_allocator.dupeZ(u8, class);
-        defer std.heap.c_allocator.free(nt_class);
+        const nt_class = try alloc.dupeZ(u8, class);
+        defer alloc.free(nt_class);
 
         const class_hint = c.XAllocClassHint();
         if (class_hint == null) return error.OutOfMemory;
@@ -47,8 +47,7 @@ pub const Window = struct {
         _ = c.XCloseDisplay(this._display);
     }
 
-    pub fn setTitle(this: *Window, title: []const u8) !void {
-        const alloc = std.heap.c_allocator;
+    pub fn setTitle(this: *Window, title: []const u8, alloc: std.mem.Allocator) !void {
         const title_c = try alloc.dupeZ(u8, title);
         defer alloc.free(title_c);
 
