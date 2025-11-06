@@ -1,5 +1,6 @@
 const std = @import("std");
 const mw = @import("mwengine");
+const gpu = mw.gpu;
 
 var window: mw.Window = undefined;
 var running: bool = true;
@@ -28,7 +29,7 @@ pub fn main() !void {
     try window.setTitle("TEST");
     defer window.deinit();
 
-    var instance = try mw.rapi.Instance.init(true, alloc);
+    var instance = try gpu.Instance.init(true, alloc);
     defer instance.deinit(alloc);
 
     const physical_device = try instance.bestPhysicalDevice(alloc);
@@ -42,7 +43,7 @@ pub fn main() !void {
     var render_pass = try display.initRenderPass();
     defer render_pass.deinit();
 
-    const framebuffers = try alloc.alloc(mw.rapi.Framebuffer, display.image_views.len);
+    const framebuffers = try alloc.alloc(gpu.Framebuffer, display.image_views.len);
     defer alloc.free(framebuffers);
     for (framebuffers, display.image_views) |*framebuffer, *image_view| {
         framebuffer.* = try .init(&device, &render_pass, display.image_size, &.{image_view}, alloc);
@@ -62,10 +63,10 @@ pub fn main() !void {
     var pixel_shader = try createShader(&device, "res/Shaders/Triangle.glsl.frag.spv", .pixel, alloc);
     defer pixel_shader.deinit();
 
-    var shader_set = try mw.rapi.Shader.Set.init(vertex_shader, pixel_shader, &.{}, alloc);
+    var shader_set = try gpu.Shader.Set.init(vertex_shader, pixel_shader, &.{}, alloc);
     defer shader_set.deinit();
 
-    var graphics_pipeline = try mw.rapi.GraphicsPipeline.init(.{
+    var graphics_pipeline = try gpu.GraphicsPipeline.init(.{
         .device = &device,
         .render_pass = &render_pass,
         .shader_set = &shader_set,
@@ -74,7 +75,7 @@ pub fn main() !void {
     });
     defer graphics_pipeline.deinit();
 
-    const command_buffers = try alloc.alloc(mw.rapi.CommandBuffer, frames_in_flight);
+    const command_buffers = try alloc.alloc(gpu.CommandBuffer, frames_in_flight);
     for (command_buffers) |*command_buffer| {
         command_buffer.* = try .init(&device);
     }
@@ -85,7 +86,7 @@ pub fn main() !void {
         alloc.free(command_buffers);
     }
 
-    const image_available_semaphores = try alloc.alloc(mw.rapi.Semaphore, frames_in_flight);
+    const image_available_semaphores = try alloc.alloc(gpu.Semaphore, frames_in_flight);
     for (image_available_semaphores) |*x| {
         x.* = try .init(&device);
     }
@@ -96,7 +97,7 @@ pub fn main() !void {
         alloc.free(image_available_semaphores);
     }
 
-    const render_finished_semaphores = try alloc.alloc(mw.rapi.Semaphore, frames_in_flight);
+    const render_finished_semaphores = try alloc.alloc(gpu.Semaphore, frames_in_flight);
     for (render_finished_semaphores) |*x| {
         x.* = try .init(&device);
     }
@@ -107,7 +108,7 @@ pub fn main() !void {
         alloc.free(render_finished_semaphores);
     }
 
-    const in_flight_fences = try alloc.alloc(mw.rapi.Fence, frames_in_flight);
+    const in_flight_fences = try alloc.alloc(gpu.Fence, frames_in_flight);
     for (in_flight_fences) |*x| {
         x.* = try .init(&device, true);
     }
@@ -178,7 +179,7 @@ pub fn main() !void {
     }
 }
 
-fn createShader(device: *const mw.rapi.Device, filepath: []const u8, stage: mw.rapi.Shader.Stage, alloc: std.mem.Allocator) !mw.rapi.Shader {
+fn createShader(device: *const gpu.Device, filepath: []const u8, stage: gpu.Shader.Stage, alloc: std.mem.Allocator) !gpu.Shader {
     const file = try std.fs.cwd().openFile(filepath, .{ .mode = .read_only });
     defer file.close();
 
@@ -189,5 +190,5 @@ fn createShader(device: *const mw.rapi.Device, filepath: []const u8, stage: mw.r
     const read = try file.readAll(std.mem.sliceAsBytes(buffer));
     if (read != fileSize)
         return error.CouldntReadShaderFile;
-    return mw.rapi.Shader.fromSpirv(device, stage, buffer);
+    return gpu.Shader.fromSpirv(device, stage, buffer);
 }
