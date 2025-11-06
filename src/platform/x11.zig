@@ -1,6 +1,6 @@
 const std = @import("std");
 const Event = @import("../Event.zig");
-const vk = @import("../RenderAPI/vulkan.zig");
+const vk = @import("../render_api/vulkan.zig");
 
 const c = @cImport({
     @cInclude("X11/Xlib.h");

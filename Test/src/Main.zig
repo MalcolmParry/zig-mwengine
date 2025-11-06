@@ -28,7 +28,7 @@ pub fn main() !void {
     try window.setTitle("TEST");
     defer window.deinit();
 
-    var instance = try mw.RAPI.Instance.init(true, alloc);
+    var instance = try mw.rapi.Instance.init(true, alloc);
     defer instance.deinit(alloc);
 
     const physical_device = try instance.bestPhysicalDevice(alloc);
@@ -42,7 +42,7 @@ pub fn main() !void {
     var render_pass = try display.initRenderPass();
     defer render_pass.deinit();
 
-    const framebuffers = try alloc.alloc(mw.RAPI.Framebuffer, display.image_views.len);
+    const framebuffers = try alloc.alloc(mw.rapi.Framebuffer, display.image_views.len);
     defer alloc.free(framebuffers);
     for (framebuffers, display.image_views) |*framebuffer, *image_view| {
         framebuffer.* = try .init(&device, &render_pass, display.image_size, &.{image_view}, alloc);
@@ -51,8 +51,10 @@ pub fn main() !void {
         framebuffer.deinit(&device);
     };
 
-    //const buffer = try device.CreateBuffer(16, .{ .vertex = true });
-    //defer buffer.Destroy();
+    // var buffer = try device.initBuffer(16, .{ .dst = true });
+    // defer buffer.deinit();
+    // const data: u128 = std.math.maxInt(u128);
+    // try buffer.setData(std.mem.asBytes(&data));
 
     var vertex_shader = try createShader(&device, "res/Shaders/Triangle.glsl.vert.spv", .vertex, alloc);
     defer vertex_shader.deinit();
@@ -60,10 +62,10 @@ pub fn main() !void {
     var pixel_shader = try createShader(&device, "res/Shaders/Triangle.glsl.frag.spv", .pixel, alloc);
     defer pixel_shader.deinit();
 
-    var shader_set = try mw.RAPI.Shader.Set.init(vertex_shader, pixel_shader, &.{}, alloc);
+    var shader_set = try mw.rapi.Shader.Set.init(vertex_shader, pixel_shader, &.{}, alloc);
     defer shader_set.deinit();
 
-    var graphics_pipeline = try mw.RAPI.GraphicsPipeline.init(.{
+    var graphics_pipeline = try mw.rapi.GraphicsPipeline.init(.{
         .device = &device,
         .render_pass = &render_pass,
         .shader_set = &shader_set,
@@ -72,11 +74,10 @@ pub fn main() !void {
     });
     defer graphics_pipeline.deinit();
 
-    const command_buffers = try alloc.alloc(mw.RAPI.CommandBuffer, frames_in_flight);
+    const command_buffers = try alloc.alloc(mw.rapi.CommandBuffer, frames_in_flight);
     for (command_buffers) |*command_buffer| {
         command_buffer.* = try .init(&device);
     }
-
     defer {
         for (command_buffers) |*command_buffer| {
             command_buffer.deinit(&device);
@@ -84,11 +85,10 @@ pub fn main() !void {
         alloc.free(command_buffers);
     }
 
-    const image_available_semaphores = try alloc.alloc(mw.RAPI.Semaphore, frames_in_flight);
+    const image_available_semaphores = try alloc.alloc(mw.rapi.Semaphore, frames_in_flight);
     for (image_available_semaphores) |*x| {
         x.* = try .init(&device);
     }
-
     defer {
         for (image_available_semaphores) |*x| {
             x.deinit();
@@ -96,85 +96,89 @@ pub fn main() !void {
         alloc.free(image_available_semaphores);
     }
 
-    const render_finished_semaphores = try alloc.alloc(mw.RAPI.Semaphore, frames_in_flight);
+    const render_finished_semaphores = try alloc.alloc(mw.rapi.Semaphore, frames_in_flight);
     for (render_finished_semaphores) |*x| {
         x.* = try .init(&device);
     }
-    defer alloc.free(render_finished_semaphores);
-    defer for (render_finished_semaphores) |*x| {
-        x.deinit();
-    };
+    defer {
+        for (render_finished_semaphores) |*x| {
+            x.deinit();
+        }
+        alloc.free(render_finished_semaphores);
+    }
 
-    // const inFLightFences = try alloc.alloc(mw.RAPI.Fence, frames_in_flight);
-    // for (inFLightFences) |*x| {
-    //     x.* = try .Create(&device, true);
-    // }
-    // defer alloc.free(inFLightFences);
-    // defer for (inFLightFences) |*x| {
-    //     x.Destroy();
-    // };
-    //
-    // defer device.WaitUntilIdle() catch unreachable;
-    // var frame: u32 = 0;
-    // while (running) {
-    //     var command_buffer = command_buffers[frame];
-    //     var image_available_semaphore = image_available_semaphores[frame];
-    //     var render_finished_semaphore = render_finished_semaphores[frame];
-    //     var inFLightFence = inFLightFences[frame];
-    //
-    //     try inFLightFence.WaitFor(1_000_000_000);
-    //     try inFLightFence.Reset();
-    //
-    //     var framebufferIndex: u32 = undefined;
-    //     while (true) {
-    //         if (display.AcquireFramebufferIndex(&image_available_semaphore, null, 1_000_000_000)) |x| {
-    //             framebufferIndex = x;
-    //             break;
-    //         } else |err| switch (err) {
-    //             error.DisplayOutOfDate => {
-    //                 try device.WaitUntilIdle();
-    //                 for (framebuffers) |*framebuffer| {
-    //                     framebuffer.Destroy(&device);
-    //                 }
-    //                 try display.Rebuild(window.GetClientSize(), alloc);
-    //                 for (framebuffers, display.imageViews) |*framebuffer, *imageView| {
-    //                     framebuffer.* = try .Create(&device, &render_pass, display.imageSize, &.{imageView}, alloc);
-    //                 }
-    //             },
-    //             else => return err,
-    //         }
-    //     }
-    //     const framebuffer = &framebuffers[framebufferIndex];
-    //     // std.log.debug("{}\n", .{framebufferIndex});
-    //
-    //     try command_buffer.Reset();
-    //     try command_buffer.Begin();
-    //     command_buffer.QueueBeginRenderPass(&render_pass, framebuffer);
-    //     command_buffer.QueueDraw(&graphics_pipeline, framebuffer);
-    //     command_buffer.QueueEndRenderPass();
-    //     try command_buffer.End();
-    //     try command_buffer.Submit(&device, &image_available_semaphore, &render_finished_semaphore, null);
-    //     display.PresentFramebuffer(framebufferIndex, &render_finished_semaphore, &inFLightFence) catch |err| switch (err) {
-    //         error.DisplayOutOfDate => {
-    //             try device.WaitUntilIdle();
-    //             for (framebuffers) |*x| {
-    //                 x.Destroy(&device);
-    //             }
-    //             try display.Rebuild(window.GetClientSize(), alloc);
-    //             for (framebuffers, display.imageViews) |*x, *imageView| {
-    //                 x.* = try .Create(&device, &render_pass, display.imageSize, &.{imageView}, alloc);
-    //             }
-    //         },
-    //         else => return err,
-    //     };
-    //
-    //     EventHandler() catch {};
-    //
-    //     frame = (frame + 1) % frames_in_flight;
-    // }
+    const in_flight_fences = try alloc.alloc(mw.rapi.Fence, frames_in_flight);
+    for (in_flight_fences) |*x| {
+        x.* = try .init(&device, true);
+    }
+    defer {
+        for (in_flight_fences) |*x| {
+            x.deinit();
+        }
+        alloc.free(in_flight_fences);
+    }
+
+    defer device.waitUntilIdle() catch @panic("failed waiting for device");
+    var frame: u32 = 0;
+    while (running) {
+        var command_buffer = command_buffers[frame];
+        var image_available_semaphore = image_available_semaphores[frame];
+        var render_finished_semaphore = render_finished_semaphores[frame];
+        var in_flight_fence = in_flight_fences[frame];
+
+        try in_flight_fence.wait(1_000_000_000);
+        try in_flight_fence.reset();
+
+        var framebuffer_index: u32 = undefined;
+        while (true) {
+            if (display.acquireFramebufferIndex(&image_available_semaphore, null, 1_000_000_000)) |x| {
+                framebuffer_index = x;
+                break;
+            } else |err| switch (err) {
+                error.DisplayOutOfDate => {
+                    try device.waitUntilIdle();
+                    for (framebuffers) |*framebuffer| {
+                        framebuffer.deinit(&device);
+                    }
+                    try display.rebuild(window.getClientSize(), alloc);
+                    for (framebuffers, display.image_views) |*framebuffer, *image_view| {
+                        framebuffer.* = try .init(&device, &render_pass, display.image_size, &.{image_view}, alloc);
+                    }
+                },
+                else => return err,
+            }
+        }
+        const framebuffer = &framebuffers[framebuffer_index];
+        // std.log.debug("{}\n", .{framebuffer_index});
+
+        try command_buffer.reset();
+        try command_buffer.begin();
+        command_buffer.queueBeginRenderPass(&render_pass, framebuffer);
+        command_buffer.queueDraw(&graphics_pipeline, framebuffer);
+        command_buffer.queueEndRenderPass();
+        try command_buffer.end();
+        try command_buffer.submit(&device, &image_available_semaphore, &render_finished_semaphore, null);
+        display.presentFramebuffer(framebuffer_index, &render_finished_semaphore, &in_flight_fence) catch |err| switch (err) {
+            error.DisplayOutOfDate => {
+                try device.waitUntilIdle();
+                for (framebuffers) |*x| {
+                    x.deinit(&device);
+                }
+                try display.rebuild(window.getClientSize(), alloc);
+                for (framebuffers, display.image_views) |*x, *image_view| {
+                    x.* = try .init(&device, &render_pass, display.image_size, &.{image_view}, alloc);
+                }
+            },
+            else => return err,
+        };
+
+        eventHandler() catch {};
+
+        frame = (frame + 1) % frames_in_flight;
+    }
 }
 
-fn createShader(device: *const mw.RAPI.Device, filepath: []const u8, stage: mw.RAPI.Shader.Stage, alloc: std.mem.Allocator) !mw.RAPI.Shader {
+fn createShader(device: *const mw.rapi.Device, filepath: []const u8, stage: mw.rapi.Shader.Stage, alloc: std.mem.Allocator) !mw.rapi.Shader {
     const file = try std.fs.cwd().openFile(filepath, .{ .mode = .read_only });
     defer file.close();
 
@@ -185,5 +189,5 @@ fn createShader(device: *const mw.RAPI.Device, filepath: []const u8, stage: mw.R
     const read = try file.readAll(std.mem.sliceAsBytes(buffer));
     if (read != fileSize)
         return error.CouldntReadShaderFile;
-    return mw.RAPI.Shader.fromSpirv(device, stage, buffer);
+    return mw.rapi.Shader.fromSpirv(device, stage, buffer);
 }

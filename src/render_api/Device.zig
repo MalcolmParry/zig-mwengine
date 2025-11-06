@@ -3,7 +3,7 @@ const Profiler = @import("../Profiler.zig");
 const vk = @import("vulkan.zig");
 const Instance = @import("Instance.zig");
 const Display = @import("Display.zig");
-// const Buffer = @import("Buffer.zig");
+const Buffer = @import("Buffer.zig");
 const c = vk.c;
 
 pub const Physical = struct {
@@ -106,4 +106,4 @@ pub fn waitUntilIdle(this: *const @This()) !void {
 }
 
 pub const initDisplay = Display.init;
-// pub const createBuffer = Buffer.Create;
+pub const initBuffer = Buffer.init;

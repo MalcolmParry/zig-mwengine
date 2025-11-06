@@ -54,7 +54,7 @@ pub fn createBuffer(device: c.VkDevice, phys: c.VkPhysicalDevice, size: c.VkDevi
     try vk.wrap(c.vkBindBufferMemory(device, buffer.*, dev_mem.*, 0));
 }
 
-pub fn copyBuffer(device: *const Device, src: c.VkBuffer, dst: c.VkBuffer, size: u32, srcOffset: u32, dstOffset: u32) void {
+pub fn copyBuffer(device: *const Device, src: c.VkBuffer, dst: c.VkBuffer, size: u32, srcOffset: u32, dstOffset: u32) !void {
     const command_buffer = try beginSingleUseCommandBuffer(device);
 
     const copy_region: c.VkBufferCopy = .{
@@ -71,20 +71,20 @@ fn beginSingleUseCommandBuffer(device: *const Device) !c.VkCommandBuffer {
     const alloc_info: c.VkCommandBufferAllocateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .level = c.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandPool = device._commandPool,
+        .commandPool = device._command_pool,
         .commandBufferCount = 1,
     };
 
     var command_buffer: c.VkCommandBuffer = undefined;
     try vk.wrap(c.vkAllocateCommandBuffers(device._device, &alloc_info, &command_buffer));
-    errdefer c.vkFreeCommandBuffers(device._device, device._commandPool, 1, &command_buffer);
+    errdefer c.vkFreeCommandBuffers(device._device, device._command_pool, 1, &command_buffer);
 
     const begin_info: c.VkCommandBufferBeginInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = c.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     };
 
-    c.vkBeginCommandBuffer(command_buffer, &begin_info);
+    try vk.wrap(c.vkBeginCommandBuffer(command_buffer, &begin_info));
 
     return command_buffer;
 }
@@ -98,8 +98,8 @@ fn endSingleUseCommandBuffer(device: *const Device, command_buffer: c.VkCommandB
         .pCommandBuffers = &command_buffer,
     };
 
-    c.vkQueueSubmit(device._graphicsQueue, 1, &submit_info, null);
-    c.vkQueueWaitIdle(device._graphicsQueue);
+    try vk.wrap(c.vkQueueSubmit(device._graphics_queue, 1, &submit_info, null));
+    try vk.wrap(c.vkQueueWaitIdle(device._graphics_queue));
 
-    c.vkFreeCommandBuffers(device._device, device._commandPool, 1, &command_buffer);
+    c.vkFreeCommandBuffers(device._device, device._command_pool, 1, &command_buffer);
 }

@@ -11,7 +11,7 @@ pub fn build(b: *std.Build) !void {
     opts.addOption(bool, "profiling", profiling);
 
     const module = b.addModule("mwengine", .{
-        .root_source_file = b.path("src/Root.zig"),
+        .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
         .link_libc = true,

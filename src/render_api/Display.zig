@@ -86,7 +86,7 @@ pub fn presentFramebuffer(this: *@This(), index: u32, wait_semaphore: ?*Semaphor
         .pNext = if (signal_fence) |_| &present_fence_info.? else null,
     };
 
-    if (vk.wrap(c.vkQueuePresentKHR(this.device._graphicsQueue, &present_info))) {} else |err| switch (err) {
+    if (vk.wrap(c.vkQueuePresentKHR(this.device._graphics_queue, &present_info))) {} else |err| switch (err) {
         vk.Error.VK_SUBOPTIMAL_KHR, vk.Error.VK_ERROR_OUT_OF_DATE_KHR => return error.DisplayOutOfDate,
         else => return err,
     }
@@ -94,9 +94,9 @@ pub fn presentFramebuffer(this: *@This(), index: u32, wait_semaphore: ?*Semaphor
 
 pub fn rebuild(this: *@This(), image_size: @Vector(2, u32), alloc: std.mem.Allocator) !void {
     const old_swapchain = this._swapchain;
-    this.DestroySwapchain(alloc);
+    this.destroySwapchain(alloc);
     this.image_size = image_size;
-    try this.CreateSwapchain(alloc);
+    try this.createSwapchain(alloc);
     c.vkDestroySwapchainKHR(this.device._device, old_swapchain, null);
 }
 

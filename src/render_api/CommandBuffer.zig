@@ -59,10 +59,10 @@ pub fn submit(this: *@This(), device: *Device, wait_semaphore: ?*Semaphore, sign
         .sType = c.VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .commandBufferCount = 1,
         .pCommandBuffers = &this._command_buffer,
-        .wait_semaphoreCount = if (wait_semaphore) |_| 1 else 0,
+        .waitSemaphoreCount = if (wait_semaphore) |_| 1 else 0,
         .pWaitSemaphores = native_wait_semaphore,
         .pWaitDstStageMask = &wait_dst_stage_mask,
-        .signal_semaphoreCount = if (signal_semaphore) |_| 1 else 0,
+        .signalSemaphoreCount = if (signal_semaphore) |_| 1 else 0,
         .pSignalSemaphores = native_signal_semaphore,
     };
 
@@ -71,7 +71,7 @@ pub fn submit(this: *@This(), device: *Device, wait_semaphore: ?*Semaphore, sign
 
 // Graphics Commands
 pub fn queueBeginRenderPass(this: *@This(), render_pass: *RenderPass, framebuffer: *Framebuffer) void {
-    const size = framebuffer.imageSize;
+    const size = framebuffer.image_size;
 
     const clear_value: c.VkClearValue = .{
         .color = .{
