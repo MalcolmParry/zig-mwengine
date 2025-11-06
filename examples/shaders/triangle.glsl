@@ -1,7 +1,7 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 
-#include "Core.hglsl"
+#include "core.hglsl"
 
 layout(location = 0) toPixel vec3 pColor;
 

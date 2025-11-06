@@ -57,10 +57,11 @@ pub fn main() !void {
     // const data: u128 = std.math.maxInt(u128);
     // try buffer.setData(std.mem.asBytes(&data));
 
-    var vertex_shader = try createShader(&device, "res/Shaders/Triangle.glsl.vert.spv", .vertex, alloc);
+    std.log.info("{s}", .{try std.fs.cwd().realpathAlloc(alloc, ".")});
+    var vertex_shader = try createShader(&device, "res/shaders/triangle.vert.spv", .vertex, alloc);
     defer vertex_shader.deinit();
 
-    var pixel_shader = try createShader(&device, "res/Shaders/Triangle.glsl.frag.spv", .pixel, alloc);
+    var pixel_shader = try createShader(&device, "res/shaders/triangle.frag.spv", .pixel, alloc);
     defer pixel_shader.deinit();
 
     var shader_set = try gpu.Shader.Set.init(vertex_shader, pixel_shader, &.{}, alloc);
