@@ -9,6 +9,7 @@ const RenderPass = @import("RenderPass.zig");
 // const Fence = @import("wait_objects.zig").Fence;
 const Image = @import("Image.zig");
 
+image_size: @Vector(2, u32),
 images: []Image,
 image_views: []Image.View,
 _swapchain: vk.SwapchainKHR,
@@ -26,6 +27,7 @@ pub fn init(device: *Device, instance: *Instance, window: *platform.Window, allo
 
     const surface_format = try chooseSurfaceFormat(instance._instance.wrapper, device._phys, surface, alloc);
     var this: @This() = .{
+        .image_size = undefined,
         .images = &.{},
         .image_views = &.{},
         ._swapchain = .null_handle,
@@ -113,6 +115,7 @@ fn initSwapchain(this: *@This(), image_size: @Vector(2, u32), alloc: std.mem.All
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     const old_swapchain: vk.SwapchainKHR = this._swapchain;
+    this.image_size = image_size;
 
     const capabilities = try this._instance.getPhysicalDeviceSurfaceCapabilitiesKHR(this._device._phys, this._surface);
 

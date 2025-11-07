@@ -44,22 +44,22 @@ pub fn main() !void {
     defer display.deinit(alloc);
 
     var render_pass = try display.initRenderPass();
-    defer render_pass.deinit(display);
+    defer render_pass.deinit(&display);
 
-    // const framebuffers = try alloc.alloc(gpu.Framebuffer, display.image_views.len);
-    // defer alloc.free(framebuffers);
-    // for (framebuffers, display.image_views) |*framebuffer, *image_view| {
-    //     framebuffer.* = try .init(&device, &render_pass, display.image_size, &.{image_view}, alloc);
-    // }
-    // defer for (framebuffers) |*framebuffer| {
-    //     framebuffer.deinit(&device);
-    // };
-    //
-    // // var buffer = try device.initBuffer(16, .{ .dst = true });
-    // // defer buffer.deinit();
-    // // const data: u128 = std.math.maxInt(u128);
-    // // try buffer.setData(std.mem.asBytes(&data));
-    //
+    const framebuffers = try alloc.alloc(gpu.Framebuffer, display.image_views.len);
+    defer alloc.free(framebuffers);
+    for (framebuffers, display.image_views) |*framebuffer, image_view| {
+        framebuffer.* = try .init(&device, &render_pass, display.image_size, &.{image_view});
+    }
+    defer for (framebuffers) |*framebuffer| {
+        framebuffer.deinit(&device);
+    };
+
+    // var buffer = try device.initBuffer(16, .{ .dst = true });
+    // defer buffer.deinit();
+    // const data: u128 = std.math.maxInt(u128);
+    // try buffer.setData(std.mem.asBytes(&data));
+
     // var vertex_shader = try createShader(&device, "res/shaders/triangle.vert.spv", .vertex, alloc);
     // defer vertex_shader.deinit();
     //
