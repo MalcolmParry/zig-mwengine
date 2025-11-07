@@ -36,10 +36,10 @@ pub fn main() !void {
     var device = try instance.initDevice(&physical_device, alloc);
     defer device.deinit();
 
-    // var display = try device.initDisplay(&window, alloc);
+    var display = try device.initDisplay(&instance, &window, alloc);
     // const frames_in_flight: u32 = @intCast(display.image_views.len);
-    // defer display.deinit(alloc);
-    //
+    defer display.deinit(alloc);
+
     // var render_pass = try display.initRenderPass();
     // defer render_pass.deinit();
     //

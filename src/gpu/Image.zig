@@ -1,12 +1,10 @@
-const vk = @import("vulkan.zig");
+const vk = @import("vulkan");
 const Device = @import("Device.zig");
-const c = vk.c;
 
 const Image = @This();
 
-_image: c.VkImage,
+_image: vk.Image,
 
 pub const View = struct {
-    device: *Device,
-    _image_view: c.VkImageView,
+    _image_view: vk.ImageView,
 };

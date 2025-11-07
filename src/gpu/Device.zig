@@ -2,7 +2,7 @@ const std = @import("std");
 const Profiler = @import("../Profiler.zig");
 const vk = @import("vulkan");
 const Instance = @import("Instance.zig");
-// const Display = @import("Display.zig");
+const Display = @import("Display.zig");
 // const Buffer = @import("Buffer.zig");
 
 pub const required_extensions: [2][*:0]const u8 = .{
@@ -14,6 +14,7 @@ pub const Physical = struct {
     _device: vk.PhysicalDevice,
 };
 
+_phys: vk.PhysicalDevice,
 _device: vk.DeviceProxy,
 _queue: vk.Queue,
 _queue_family_index: u32,
@@ -76,6 +77,7 @@ pub fn init(instance: *const Instance, physical_device: *const Physical, alloc: 
     }, vk_alloc);
 
     return .{
+        ._phys = physical_device._device,
         ._device = device,
         ._queue = queue,
         ._queue_family_index = queue_family_index,
@@ -96,5 +98,5 @@ pub fn waitUntilIdle(this: *const @This()) !void {
     try this._device.deviceWaitIdle();
 }
 
-// pub const initDisplay = Display.init;
+pub const initDisplay = Display.init;
 // pub const initBuffer = Buffer.init;

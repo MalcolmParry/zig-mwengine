@@ -1,6 +1,6 @@
 const std = @import("std");
 const Event = @import("../Event.zig");
-const vk = @import("../gpu/vulkan.zig");
+const vk = @import("vulkan");
 
 const c = @cImport({
     @cInclude("X11/Xlib.h");
@@ -98,16 +98,12 @@ pub const vulkan = struct {
         "VK_KHR_xlib_surface",
     };
 
-    pub fn createSurface(window: *Window, instance: vk.c.VkInstance) !vk.c.VkSurfaceKHR {
-        var surface: vk.c.VkSurfaceKHR = undefined;
+    pub fn createSurface(window: *Window, instance: vk.InstanceProxy) !vk.SurfaceKHR {
+        const vk_alloc: ?*vk.AllocationCallbacks = null;
 
-        const create_info: vk.c.VkXlibSurfaceCreateInfoKHR = .{
-            .sType = vk.c.VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+        return instance.createXlibSurfaceKHR(&.{
             .dpy = @ptrCast(window._display),
             .window = window._window,
-        };
-
-        try vk.wrap(vk.c.vkCreateXlibSurfaceKHR(instance, &create_info, null, &surface));
-        return surface;
+        }, vk_alloc);
     }
 };

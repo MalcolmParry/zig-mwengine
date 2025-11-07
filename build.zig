@@ -53,9 +53,10 @@ pub fn build(b: *Build) !void {
     // run the example
     const run_command = b.addRunArtifact(example);
     run_command.setCwd(.{ .cwd_relative = b.install_prefix });
+    run_command.step.dependOn(example_build_step);
+
     const run_step = b.step("run", "Run the example");
     run_step.dependOn(&run_command.step);
-    run_step.dependOn(example_build_step);
 }
 
 fn buildShaders(b: *Build, build_step: *Build.Step) !void {
