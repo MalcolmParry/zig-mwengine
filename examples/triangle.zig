@@ -60,15 +60,15 @@ pub fn main() !void {
     // const data: u128 = std.math.maxInt(u128);
     // try buffer.setData(std.mem.asBytes(&data));
 
-    // var vertex_shader = try createShader(&device, "res/shaders/triangle.vert.spv", .vertex, alloc);
-    // defer vertex_shader.deinit();
-    //
-    // var pixel_shader = try createShader(&device, "res/shaders/triangle.frag.spv", .pixel, alloc);
-    // defer pixel_shader.deinit();
-    //
-    // var shader_set = try gpu.Shader.Set.init(vertex_shader, pixel_shader, &.{}, alloc);
-    // defer shader_set.deinit();
-    //
+    var vertex_shader = try createShader(&device, "res/shaders/triangle.vert.spv", .vertex, alloc);
+    defer vertex_shader.deinit(&device);
+
+    var pixel_shader = try createShader(&device, "res/shaders/triangle.frag.spv", .pixel, alloc);
+    defer pixel_shader.deinit(&device);
+
+    var shader_set = try gpu.Shader.Set.init(vertex_shader, pixel_shader, &.{}, alloc);
+    defer shader_set.deinit(alloc);
+
     // var graphics_pipeline = try gpu.GraphicsPipeline.init(.{
     //     .device = &device,
     //     .render_pass = &render_pass,
@@ -182,16 +182,16 @@ pub fn main() !void {
     }
 }
 
-// fn createShader(device: *const gpu.Device, filepath: []const u8, stage: gpu.Shader.Stage, alloc: std.mem.Allocator) !gpu.Shader {
-//     const file = try std.fs.cwd().openFile(filepath, .{ .mode = .read_only });
-//     defer file.close();
-//
-//     const fileSize = try file.getEndPos();
-//     const buffer = try alloc.alloc(u32, try std.math.divCeil(usize, fileSize, @sizeOf(u32)));
-//     defer alloc.free(buffer);
-//
-//     const read = try file.readAll(std.mem.sliceAsBytes(buffer));
-//     if (read != fileSize)
-//         return error.CouldntReadShaderFile;
-//     return gpu.Shader.fromSpirv(device, stage, buffer);
-// }
+fn createShader(device: *gpu.Device, filepath: []const u8, stage: gpu.Shader.Stage, alloc: std.mem.Allocator) !gpu.Shader {
+    const file = try std.fs.cwd().openFile(filepath, .{ .mode = .read_only });
+    defer file.close();
+
+    const fileSize = try file.getEndPos();
+    const buffer = try alloc.alloc(u32, try std.math.divCeil(usize, fileSize, @sizeOf(u32)));
+    defer alloc.free(buffer);
+
+    const read = try file.readAll(std.mem.sliceAsBytes(buffer));
+    if (read != fileSize)
+        return error.CouldntReadShaderFile;
+    return gpu.Shader.fromSpirv(device, stage, buffer);
+}

@@ -1,42 +1,38 @@
 const std = @import("std");
 const Profiler = @import("../Profiler.zig");
-const vk = @import("vulkan.zig");
+const vk = @import("vulkan");
 const Device = @import("Device.zig");
-const c = vk.c;
 
 const Shader = @This();
 
-device: *const Device,
-_shader_module: c.VkShaderModule,
-_stage: c.VkShaderStageFlags,
+_shader_module: vk.ShaderModule,
+_stage: vk.ShaderStageFlags,
 
-pub fn fromSpirv(device: *const Device, stage: Stage, spirvByteCode: []const u32) !@This() {
+pub fn fromSpirv(device: *Device, stage: Stage, spirvByteCode: []const u32) !@This() {
     var prof = Profiler.startFuncProfiler(@src());
     defer prof.stop();
 
-    var this: @This() = undefined;
-    this.device = device;
-    this._stage = switch (stage) {
-        .vertex => c.VK_SHADER_STAGE_VERTEX_BIT,
-        .pixel => c.VK_SHADER_STAGE_FRAGMENT_BIT,
+    const vk_alloc: ?*vk.AllocationCallbacks = null;
+    const shader_module = try device._device.createShaderModule(&.{
+        .code_size = spirvByteCode.len * @sizeOf(u32),
+        .p_code = spirvByteCode.ptr,
+    }, vk_alloc);
+
+    return .{
+        ._shader_module = shader_module,
+        ._stage = switch (stage) {
+            .vertex => .{ .vertex_bit = true },
+            .pixel => .{ .fragment_bit = true },
+        },
     };
-
-    const create_info: c.VkShaderModuleCreateInfo = .{
-        .sType = c.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = spirvByteCode.len * @sizeOf(u32),
-        .pCode = spirvByteCode.ptr,
-    };
-
-    try vk.wrap(c.vkCreateShaderModule(device._device, &create_info, null, &this._shader_module));
-
-    return this;
 }
 
-pub fn deinit(this: *@This()) void {
+pub fn deinit(this: *@This(), device: *Device) void {
     var prof = Profiler.startFuncProfiler(@src());
     defer prof.stop();
 
-    c.vkDestroyShaderModule(this.device._device, this._shader_module, null);
+    const vk_alloc: ?*vk.AllocationCallbacks = null;
+    device._device.destroyShaderModule(this._shader_module, vk_alloc);
 }
 
 pub const Stage = enum {
@@ -47,24 +43,21 @@ pub const Stage = enum {
 pub const Set = struct {
     vertex: Shader,
     pixel: Shader,
-    _per_vertex: []c.VkFormat,
-    alloc: std.mem.Allocator,
+    _per_vertex: []const vk.Format,
 
     pub fn init(vertex: Shader, pixel: Shader, per_vertex: []const DataType, alloc: std.mem.Allocator) !@This() {
-        var this: @This() = undefined;
-        std.debug.assert(vertex._stage == c.VK_SHADER_STAGE_VERTEX_BIT);
-        std.debug.assert(pixel._stage == c.VK_SHADER_STAGE_FRAGMENT_BIT);
+        std.debug.assert(vertex._stage.vertex_bit);
+        std.debug.assert(pixel._stage.fragment_bit);
 
-        this.vertex = vertex;
-        this.pixel = pixel;
-        this._per_vertex = try shaderDataTypeToVK(per_vertex, alloc);
-        this.alloc = alloc;
-
-        return this;
+        return .{
+            .vertex = vertex,
+            .pixel = pixel,
+            ._per_vertex = try _shaderDataTypeToVk(per_vertex, alloc),
+        };
     }
 
-    pub fn deinit(this: *@This()) void {
-        this.alloc.free(this._per_vertex);
+    pub fn deinit(this: *@This(), alloc: std.mem.Allocator) void {
+        alloc.free(this._per_vertex);
     }
 };
 
@@ -142,7 +135,7 @@ pub const DataType = enum {
     }
 };
 
-pub fn shaderDataTypeToVK(types: []const DataType, alloc: std.mem.Allocator) ![]c.VkFormat {
+fn _shaderDataTypeToVk(types: []const DataType, alloc: std.mem.Allocator) ![]vk.Format {
     var count: u32 = 0;
 
     for (types) |x| {
@@ -156,51 +149,51 @@ pub fn shaderDataTypeToVK(types: []const DataType, alloc: std.mem.Allocator) ![]
         }
     }
 
-    const vk_types = try alloc.alloc(c.VkFormat, count);
+    const vk_types = try alloc.alloc(vk.Format, count);
     var i: u32 = 0;
     for (types) |t| {
         if (t == .float32x4x4) {
-            vk_types[i + 0] = c.VK_FORMAT_R32G32B32A32_SFLOAT;
-            vk_types[i + 1] = c.VK_FORMAT_R32G32B32A32_SFLOAT;
-            vk_types[i + 2] = c.VK_FORMAT_R32G32B32A32_SFLOAT;
-            vk_types[i + 3] = c.VK_FORMAT_R32G32B32A32_SFLOAT;
+            vk_types[i + 0] = .r32g32b32a32_sfloat;
+            vk_types[i + 1] = .r32g32b32a32_sfloat;
+            vk_types[i + 2] = .r32g32b32a32_sfloat;
+            vk_types[i + 3] = .r32g32b32a32_sfloat;
             i += 4;
             continue;
         }
 
         vk_types[i] = switch (t) {
-            .uint8 => c.VK_FORMAT_R8_UINT,
-            .uint8x2 => c.VK_FORMAT_R8G8_UINT,
-            .uint8x3 => c.VK_FORMAT_R8G8B8_UINT,
-            .uint8x4 => c.VK_FORMAT_R8G8B8A8_UINT,
-            .uint16 => c.VK_FORMAT_R16_UINT,
-            .uint16x2 => c.VK_FORMAT_R16G16_UINT,
-            .uint16x3 => c.VK_FORMAT_R16G16B16_UINT,
-            .uint16x4 => c.VK_FORMAT_R16G16B16A16_UINT,
-            .uint32 => c.VK_FORMAT_R32_UINT,
-            .uint32x2 => c.VK_FORMAT_R32G32_UINT,
-            .uint32x3 => c.VK_FORMAT_R32G32B32_UINT,
-            .uint32x4 => c.VK_FORMAT_R32G32B32A32_UINT,
-            .sint8 => c.VK_FORMAT_R8_SINT,
-            .sint8x2 => c.VK_FORMAT_R8G8_SINT,
-            .sint8x3 => c.VK_FORMAT_R8G8B8_SINT,
-            .sint8x4 => c.VK_FORMAT_R8G8B8A8_SINT,
-            .sint16 => c.VK_FORMAT_R16_SINT,
-            .sint16x2 => c.VK_FORMAT_R16G16_SINT,
-            .sint16x3 => c.VK_FORMAT_R16G16B16_SINT,
-            .sint16x4 => c.VK_FORMAT_R16G16B16A16_SINT,
-            .sint32 => c.VK_FORMAT_R32_SINT,
-            .sint32x2 => c.VK_FORMAT_R32G32_SINT,
-            .sint32x3 => c.VK_FORMAT_R32G32B32_SINT,
-            .sint32x4 => c.VK_FORMAT_R32G32B32A32_SINT,
-            .float16 => c.VK_FORMAT_R16_SFLOAT,
-            .float16x2 => c.VK_FORMAT_R16G16_SFLOAT,
-            .float16x3 => c.VK_FORMAT_R16G16B16_SFLOAT,
-            .float16x4 => c.VK_FORMAT_R16G16B16A16_SFLOAT,
-            .float32 => c.VK_FORMAT_R32_SFLOAT,
-            .float32x2 => c.VK_FORMAT_R32G32_SFLOAT,
-            .float32x3 => c.VK_FORMAT_R32G32B32_SFLOAT,
-            .float32x4 => c.VK_FORMAT_R32G32B32A32_SFLOAT,
+            .uint8 => .r8_uint,
+            .uint8x2 => .r8g8_uint,
+            .uint8x3 => .r8g8b8_uint,
+            .uint8x4 => .r8g8b8a8_uint,
+            .uint16 => .r16_uint,
+            .uint16x2 => .r16g16_uint,
+            .uint16x3 => .r16g16b16_uint,
+            .uint16x4 => .r16g16b16a16_uint,
+            .uint32 => .r32_uint,
+            .uint32x2 => .r32g32_uint,
+            .uint32x3 => .r32g32b32_uint,
+            .uint32x4 => .r32g32b32a32_uint,
+            .sint8 => .r8_sint,
+            .sint8x2 => .r8g8_sint,
+            .sint8x3 => .r8g8b8_sint,
+            .sint8x4 => .r8g8b8a8_sint,
+            .sint16 => .r16_sint,
+            .sint16x2 => .r16g16_sint,
+            .sint16x3 => .r16g16b16_sint,
+            .sint16x4 => .r16g16b16a16_sint,
+            .sint32 => .r32_sint,
+            .sint32x2 => .r32g32_sint,
+            .sint32x3 => .r32g32b32_sint,
+            .sint32x4 => .r32g32b32a32_sint,
+            .float16 => .r16_sfloat,
+            .float16x2 => .r16g16_sfloat,
+            .float16x3 => .r16g16b16_sfloat,
+            .float16x4 => .r16g16b16a16_sfloat,
+            .float32 => .r32_sfloat,
+            .float32x2 => .r32g32_sfloat,
+            .float32x3 => .r32g32b32_sfloat,
+            .float32x4 => .r32g32b32a32_sfloat,
             .float32x4x4 => unreachable,
         };
 
