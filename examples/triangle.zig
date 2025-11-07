@@ -43,9 +43,9 @@ pub fn main() !void {
     // const frames_in_flight: u32 = @intCast(display.image_views.len);
     defer display.deinit(alloc);
 
-    // var render_pass = try display.initRenderPass();
-    // defer render_pass.deinit();
-    //
+    var render_pass = try display.initRenderPass();
+    defer render_pass.deinit(display);
+
     // const framebuffers = try alloc.alloc(gpu.Framebuffer, display.image_views.len);
     // defer alloc.free(framebuffers);
     // for (framebuffers, display.image_views) |*framebuffer, *image_view| {

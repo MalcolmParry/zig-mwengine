@@ -50,8 +50,8 @@ pub fn deinit(this: *@This(), alloc: std.mem.Allocator) void {
     this._instance.destroySurfaceKHR(this._surface, vk_alloc);
 }
 
-// pub const initRenderPass = RenderPass.init;
-//
+pub const initRenderPass = RenderPass.init;
+
 // pub fn acquireFramebufferIndex(this: *@This(), signal_semaphore: ?*Semaphore, signal_fence: ?*Fence, timeout_ns: u64) !u32 {
 //     const native_semaphore = if (signal_semaphore) |x| x._semaphore else null;
 //     const native_fence = if (signal_fence) |x| x._fence else null;
