@@ -31,7 +31,7 @@ pub fn init(debug_logging: bool, alloc: std.mem.Allocator) !@This() {
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     // TODO: is platform specific
-    //vulkan-1.dll on windows
+    // vulkan-1.dll on windows
     var lib_vulkan = try std.DynLib.open("libvulkan.so.1");
     errdefer lib_vulkan.close();
     const loader = lib_vulkan.lookup(vk.PfnGetInstanceProcAddr, "vkGetInstanceProcAddr") orelse return Error.CantLoadVulkan;
@@ -135,40 +135,41 @@ pub fn deinit(this: *@This(), alloc: std.mem.Allocator) void {
     this._lib_vulkan.close();
 }
 
-// pub const initDevice = Device.init;
-//
-// pub fn bestPhysicalDevice(this: *const @This(), alloc: std.mem.Allocator) !Device.Physical {
-//     var prof = Profiler.startFuncProfiler(@src());
-//     defer prof.stop();
-//
-//     _ = alloc;
-//
-//     var best_device: ?Device.Physical = null;
-//     var best_score: i32 = -1;
-//     for (this._physical_devices) |device| {
-//         var properties: c.VkPhysicalDeviceProperties = undefined;
-//         var features: c.VkPhysicalDeviceFeatures = undefined;
-//         c.vkGetPhysicalDeviceProperties(device._device, &properties);
-//         c.vkGetPhysicalDeviceFeatures(device._device, &features);
-//
-//         var score: i32 = 0;
-//
-//         if (properties.deviceType == c.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-//             score += 1000;
-//         }
-//
-//         score += @intCast(properties.limits.maxImageDimension2D);
-//
-//         std.debug.print("Device ({}): {s}\n", .{ score, properties.deviceName });
-//         if (score > best_score) {
-//             best_score = score;
-//             best_device = device;
-//         }
-//     }
-//
-//     if (best_score == -1) best_device = null;
-//     return best_device orelse error.NoDeviceAvailable;
-// }
+pub const initDevice = Device.init;
+
+pub fn bestPhysicalDevice(this: *const @This(), alloc: std.mem.Allocator) !Device.Physical {
+    var prof = Profiler.startFuncProfiler(@src());
+    defer prof.stop();
+
+    _ = alloc;
+
+    var best_device: ?Device.Physical = null;
+    var best_score: i32 = -1;
+    for (this._physical_devices) |device| {
+        const native = device._device;
+        const features = this._instance.getPhysicalDeviceFeatures(native);
+        const properties = this._instance.getPhysicalDeviceProperties(native);
+        _ = features;
+
+        var score: i32 = 0;
+
+        if (properties.device_type == .discrete_gpu) {
+            score += 1000;
+        }
+
+        score += @intCast(properties.limits.max_image_dimension_2d);
+
+        std.log.info("Device ({}): {s}", .{ score, properties.device_name });
+        std.log.info("Max Image: {}", .{properties.limits.max_image_dimension_2d});
+        if (score > best_score) {
+            best_score = score;
+            best_device = device;
+        }
+    }
+
+    if (best_score == -1) best_device = null;
+    return best_device orelse error.NoDeviceAvailable;
+}
 
 fn debugMessengerCallback(message_severity: vk.DebugUtilsMessageSeverityFlagsEXT, message_type: vk.DebugUtilsMessageTypeFlagsEXT, callback_data: ?*const vk.DebugUtilsMessengerCallbackDataEXT, context: ?*anyopaque) callconv(.c) vk.Bool32 {
     _ = message_type;

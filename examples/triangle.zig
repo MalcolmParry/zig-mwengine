@@ -32,10 +32,10 @@ pub fn main() !void {
     var instance = try gpu.Instance.init(true, alloc);
     defer instance.deinit(alloc);
 
-    // const physical_device = try instance.bestPhysicalDevice(alloc);
-    // var device = try instance.initDevice(&physical_device, alloc);
-    // defer device.deinit();
-    //
+    const physical_device = try instance.bestPhysicalDevice(alloc);
+    var device = try instance.initDevice(&physical_device, alloc);
+    defer device.deinit();
+
     // var display = try device.initDisplay(&window, alloc);
     // const frames_in_flight: u32 = @intCast(display.image_views.len);
     // defer display.deinit(alloc);

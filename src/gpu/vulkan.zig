@@ -13,11 +13,6 @@ pub const c = @cImport({
     @cInclude("vulkan/vulkan.h");
 });
 
-pub const required_device_extensions: [2][*:0]const u8 = .{
-    c.VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-    c.VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
-};
-
 pub const Error = error{
     VK_NOT_READY,
     VK_TIMEOUT,
