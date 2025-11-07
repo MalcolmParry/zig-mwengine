@@ -188,6 +188,7 @@ fn deinitSwapchain(this: *@This(), alloc: std.mem.Allocator) void {
 
 fn chooseSurfaceFormat(dispatch: *const vk.InstanceWrapper, phys: vk.PhysicalDevice, surface: vk.SurfaceKHR, alloc: std.mem.Allocator) !vk.SurfaceFormatKHR {
     const formats = try dispatch.getPhysicalDeviceSurfaceFormatsAllocKHR(phys, surface, alloc);
+    defer alloc.free(formats);
 
     for (formats) |format| {
         if (format.format == .b8g8r8a8_srgb and format.color_space == .srgb_nonlinear_khr) {

@@ -132,6 +132,7 @@ pub fn deinit(this: *@This(), alloc: std.mem.Allocator) void {
     if (this._maybe_debug_messenger) |debug_messenger|
         this._instance.destroyDebugUtilsMessengerEXT(debug_messenger, vk_alloc);
     this._instance.destroyInstance(vk_alloc);
+    alloc.destroy(this._instance.wrapper);
     this._lib_vulkan.close();
 }
 

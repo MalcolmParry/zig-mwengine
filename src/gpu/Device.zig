@@ -85,13 +85,14 @@ pub fn init(instance: *const Instance, physical_device: *const Physical, alloc: 
     };
 }
 
-pub fn deinit(this: *@This()) void {
+pub fn deinit(this: *@This(), alloc: std.mem.Allocator) void {
     var prof = Profiler.startFuncProfiler(@src());
     defer prof.stop();
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     this._device.destroyCommandPool(this._command_pool, vk_alloc);
     this._device.destroyDevice(vk_alloc);
+    alloc.destroy(this._device.wrapper);
 }
 
 pub fn waitUntilIdle(this: *const @This()) !void {
