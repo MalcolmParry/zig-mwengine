@@ -28,7 +28,6 @@ pub fn build(b: *Build) !void {
     module.addOptions("build-options", opts);
     module.addImport("vulkan", vulkan);
     module.linkSystemLibrary("X11", .{});
-    module.linkSystemLibrary("vulkan", .{});
 
     // example
     const example = b.addExecutable(.{

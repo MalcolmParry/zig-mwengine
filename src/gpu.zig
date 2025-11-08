@@ -2,7 +2,6 @@ pub const Instance = @import("gpu/Instance.zig");
 pub const Device = @import("gpu/Device.zig");
 pub const Display = @import("gpu/Display.zig");
 pub const RenderPass = @import("gpu/RenderPass.zig");
-pub const Buffer = @import("gpu/Buffer.zig");
 pub const Shader = @import("gpu/Shader.zig");
 pub const GraphicsPipeline = @import("gpu/GraphicsPipeline.zig");
 pub const CommandBuffer = @import("gpu/CommandBuffer.zig");

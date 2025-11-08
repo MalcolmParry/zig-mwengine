@@ -55,11 +55,6 @@ pub fn main() !void {
         framebuffer.deinit(&device);
     };
 
-    // var buffer = try device.initBuffer(16, .{ .dst = true });
-    // defer buffer.deinit();
-    // const data: u128 = std.math.maxInt(u128);
-    // try buffer.setData(std.mem.asBytes(&data));
-
     var vertex_shader = try createShader(&device, "res/shaders/triangle.vert.spv", .vertex, alloc);
     defer vertex_shader.deinit(&device);
 
