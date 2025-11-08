@@ -123,62 +123,58 @@ pub fn main() !void {
     }
 
     defer device.waitUntilIdle() catch @panic("failed waiting for device");
-    // var frame: u32 = 0;
+    var frame: usize = 0;
     while (running) {
-        // var command_buffer = command_buffers[frame];
-        // var image_available_semaphore = image_available_semaphores[frame];
-        // var render_finished_semaphore = render_finished_semaphores[frame];
-        // var in_flight_fence = in_flight_fences[frame];
-        //
-        // try in_flight_fence.wait(1_000_000_000);
-        // try in_flight_fence.reset();
-        //
-        // var framebuffer_index: u32 = undefined;
-        // while (true) {
-        //     if (display.acquireFramebufferIndex(&image_available_semaphore, null, 1_000_000_000)) |x| {
-        //         framebuffer_index = x;
-        //         break;
-        //     } else |err| switch (err) {
-        //         error.DisplayOutOfDate => {
-        //             try device.waitUntilIdle();
-        //             for (framebuffers) |*framebuffer| {
-        //                 framebuffer.deinit(&device);
-        //             }
-        //             try display.rebuild(window.getClientSize(), alloc);
-        //             for (framebuffers, display.image_views) |*framebuffer, *image_view| {
-        //                 framebuffer.* = try .init(&device, &render_pass, display.image_size, &.{image_view}, alloc);
-        //             }
-        //         },
-        //         else => return err,
-        //     }
-        // }
-        // const framebuffer = &framebuffers[framebuffer_index];
-        // // std.log.debug("{}\n", .{framebuffer_index});
-        //
-        // try command_buffer.reset();
-        // try command_buffer.begin();
-        // command_buffer.queueBeginRenderPass(&render_pass, framebuffer);
-        // command_buffer.queueDraw(&graphics_pipeline, framebuffer);
-        // command_buffer.queueEndRenderPass();
-        // try command_buffer.end();
-        // try command_buffer.submit(&device, &image_available_semaphore, &render_finished_semaphore, null);
-        // display.presentFramebuffer(framebuffer_index, &render_finished_semaphore, &in_flight_fence) catch |err| switch (err) {
-        //     error.DisplayOutOfDate => {
-        //         try device.waitUntilIdle();
-        //         for (framebuffers) |*x| {
-        //             x.deinit(&device);
-        //         }
-        //         try display.rebuild(window.getClientSize(), alloc);
-        //         for (framebuffers, display.image_views) |*x, *image_view| {
-        //             x.* = try .init(&device, &render_pass, display.image_size, &.{image_view}, alloc);
-        //         }
-        //     },
-        //     else => return err,
-        // };
+        var command_buffer = command_buffers[frame];
+        var image_available_semaphore = image_available_semaphores[frame];
+        var render_finished_semaphore = render_finished_semaphores[frame];
+        var in_flight_fence = in_flight_fences[frame];
+
+        try in_flight_fence.wait(&device, 1_000_000_000);
+        try in_flight_fence.reset(&device);
+
+        const framebuffer_index = blk: {
+            for (0..3) |_| {
+                const result = try display.acquireFramebufferIndex(&image_available_semaphore, null, 1_000_000_000);
+                if (result) |x| break :blk x;
+
+                try device.waitUntilIdle();
+                for (framebuffers) |*framebuffer| {
+                    framebuffer.deinit(&device);
+                }
+                try display.rebuild(window.getClientSize(), alloc);
+                for (framebuffers, display.image_views) |*framebuffer, image_view| {
+                    framebuffer.* = try .init(&device, &render_pass, display.image_size, &.{image_view});
+                }
+            }
+
+            return error.Failed;
+        };
+
+        const framebuffer = &framebuffers[framebuffer_index];
+        // std.log.debug("{}\n", .{framebuffer_index});
+
+        try command_buffer.reset(&device);
+        try command_buffer.begin(&device);
+        command_buffer.queueBeginRenderPass(&device, &render_pass, framebuffer);
+        command_buffer.queueDraw(&device, &graphics_pipeline, framebuffer);
+        command_buffer.queueEndRenderPass(&device);
+        try command_buffer.end(&device);
+        try command_buffer.submit(&device, &image_available_semaphore, &render_finished_semaphore, null);
+        if (try display.presentFramebuffer(framebuffer_index, &render_finished_semaphore, &in_flight_fence) != .success) {
+            try device.waitUntilIdle();
+            for (framebuffers) |*x| {
+                x.deinit(&device);
+            }
+            try display.rebuild(window.getClientSize(), alloc);
+            for (framebuffers, display.image_views) |*x, image_view| {
+                x.* = try .init(&device, &render_pass, display.image_size, &.{image_view});
+            }
+        }
 
         eventHandler() catch {};
 
-        // frame = (frame + 1) % frames_in_flight;
+        frame = (frame + 1) % frames_in_flight;
     }
 }
 

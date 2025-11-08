@@ -25,93 +25,88 @@ pub fn deinit(this: *@This(), device: *Device) void {
     device._device.freeCommandBuffers(device._command_pool, 1, @ptrCast(&this._command_buffer));
 }
 
-// pub fn begin(this: *@This()) !void {
-//     const begin_info: c.VkCommandBufferBeginInfo = .{
-//         .sType = c.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-//         .flags = 0, // TODO: allow for flags
-//         .pInheritanceInfo = null,
-//     };
-//
-//     try vk.wrap(c.vkBeginCommandBuffer(this._command_buffer, &begin_info));
-// }
-//
-// pub fn end(this: *@This()) !void {
-//     try vk.wrap(c.vkEndCommandBuffer(this._command_buffer));
-// }
-//
-// pub fn reset(this: *@This()) !void {
-//     try vk.wrap(c.vkResetCommandBuffer(this._command_buffer, 0));
-// }
-//
-// // TODO: allow for multiple semaphores
-// pub fn submit(this: *@This(), device: *Device, wait_semaphore: ?*Semaphore, signal_semaphore: ?*Semaphore, signal_fence: ?*Fence) !void {
-//     const native_wait_semaphore = if (wait_semaphore) |x| &x._semaphore else null;
-//     const native_signal_semaphore = if (signal_semaphore) |x| &x._semaphore else null;
-//     const native_signal_fence = if (signal_fence) |x| x._fence else null;
-//
-//     const wait_dst_stage_mask: u32 = c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-//     const submit_info: c.VkSubmitInfo = .{
-//         .sType = c.VK_STRUCTURE_TYPE_SUBMIT_INFO,
-//         .commandBufferCount = 1,
-//         .pCommandBuffers = &this._command_buffer,
-//         .waitSemaphoreCount = if (wait_semaphore) |_| 1 else 0,
-//         .pWaitSemaphores = native_wait_semaphore,
-//         .pWaitDstStageMask = &wait_dst_stage_mask,
-//         .signalSemaphoreCount = if (signal_semaphore) |_| 1 else 0,
-//         .pSignalSemaphores = native_signal_semaphore,
-//     };
-//
-//     try vk.wrap(c.vkQueueSubmit(device._graphics_queue, 1, &submit_info, native_signal_fence));
-// }
-//
-// // Graphics Commands
-// pub fn queueBeginRenderPass(this: *@This(), render_pass: *RenderPass, framebuffer: *Framebuffer) void {
-//     const size = framebuffer.image_size;
-//
-//     const clear_value: c.VkClearValue = .{
-//         .color = .{
-//             .float32 = .{ 0, 0, 0, 1 },
-//         },
-//     };
-//
-//     const render_pass_info: c.VkRenderPassBeginInfo = .{
-//         .sType = c.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-//         .renderPass = render_pass._render_pass,
-//         .framebuffer = framebuffer._framebuffer,
-//         .renderArea = .{
-//             .extent = .{ .width = size[0], .height = size[1] },
-//             .offset = .{ .x = 0, .y = 0 },
-//         },
-//         .clearValueCount = 1,
-//         .pClearValues = &clear_value,
-//     };
-//
-//     c.vkCmdBeginRenderPass(this._command_buffer, &render_pass_info, c.VK_SUBPASS_CONTENTS_INLINE);
-// }
-//
-// pub fn queueEndRenderPass(this: *@This()) void {
-//     c.vkCmdEndRenderPass(this._command_buffer);
-// }
-//
-// pub fn queueDraw(this: *@This(), graphics_pipeline: *GraphicsPipeline, framebuffer: *Framebuffer) void {
-//     c.vkCmdBindPipeline(this._command_buffer, c.VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline._pipeline);
-//
-//     const viewport: c.VkViewport = .{
-//         .x = 0,
-//         .y = 0,
-//         .width = @floatFromInt(framebuffer.image_size[0]),
-//         .height = @floatFromInt(framebuffer.image_size[1]),
-//         .minDepth = 0,
-//         .maxDepth = 1,
-//     };
-//
-//     c.vkCmdSetViewport(this._command_buffer, 0, 1, &viewport);
-//
-//     const scissor: c.VkRect2D = .{
-//         .extent = .{ .width = framebuffer.image_size[0], .height = framebuffer.image_size[1] },
-//         .offset = .{ .x = 0, .y = 0 },
-//     };
-//
-//     c.vkCmdSetScissor(this._command_buffer, 0, 1, &scissor);
-//     c.vkCmdDraw(this._command_buffer, graphics_pipeline.vertex_count, 1, 0, 0);
-// }
+pub fn begin(this: *@This(), device: *Device) !void {
+    try device._device.beginCommandBuffer(this._command_buffer, &.{
+        .flags = .{},
+    });
+}
+
+pub fn end(this: *@This(), device: *Device) !void {
+    try device._device.endCommandBuffer(this._command_buffer);
+}
+
+pub fn reset(this: *@This(), device: *Device) !void {
+    try device._device.resetCommandBuffer(this._command_buffer, .{});
+}
+
+// TODO: allow for multiple semaphores
+pub fn submit(this: *@This(), device: *Device, wait_semaphore: ?*Semaphore, signal_semaphore: ?*Semaphore, signal_fence: ?*Fence) !void {
+    const native_wait_semaphore = if (wait_semaphore) |x| &x._semaphore else null;
+    const native_signal_semaphore = if (signal_semaphore) |x| &x._semaphore else null;
+    const native_signal_fence = if (signal_fence) |x| x._fence else null;
+
+    const wait_dst_stage_mask: vk.PipelineStageFlags = .{
+        .color_attachment_output_bit = true,
+    };
+
+    const submit_info: vk.SubmitInfo = .{
+        .command_buffer_count = 1,
+        .p_command_buffers = @ptrCast(&this._command_buffer),
+        .wait_semaphore_count = if (wait_semaphore) |_| 1 else 0,
+        .p_wait_semaphores = @ptrCast(native_wait_semaphore),
+        .signal_semaphore_count = if (signal_semaphore) |_| 1 else 0,
+        .p_signal_semaphores = @ptrCast(native_signal_semaphore),
+        .p_wait_dst_stage_mask = @ptrCast(&wait_dst_stage_mask),
+    };
+
+    try device._device.queueSubmit(device._queue, 1, @ptrCast(&submit_info), native_signal_fence orelse .null_handle);
+}
+
+// Graphics Commands
+pub fn queueBeginRenderPass(this: *@This(), device: *Device, render_pass: *RenderPass, framebuffer: *Framebuffer) void {
+    const size = framebuffer.image_size;
+
+    const clear_value: vk.ClearValue = .{
+        .color = .{ .float_32 = .{ 0, 0, 0, 1 } },
+    };
+
+    device._device.cmdBeginRenderPass(this._command_buffer, &.{
+        .render_pass = render_pass._render_pass,
+        .framebuffer = framebuffer._framebuffer,
+        .clear_value_count = 1,
+        .p_clear_values = @ptrCast(&clear_value),
+        .render_area = .{
+            .extent = .{ .width = size[0], .height = size[1] },
+            .offset = .{ .x = 0, .y = 0 },
+        },
+    }, .@"inline");
+}
+
+pub fn queueEndRenderPass(this: *@This(), device: *Device) void {
+    device._device.cmdEndRenderPass(this._command_buffer);
+}
+
+pub fn queueDraw(this: *@This(), device: *Device, graphics_pipeline: *GraphicsPipeline, framebuffer: *Framebuffer) void {
+    const image_size = framebuffer.image_size;
+
+    device._device.cmdBindPipeline(this._command_buffer, .graphics, graphics_pipeline._pipeline);
+
+    const viewport: vk.Viewport = .{
+        .x = 0,
+        .y = 0,
+        .width = @floatFromInt(image_size[0]),
+        .height = @floatFromInt(image_size[1]),
+        .min_depth = 0,
+        .max_depth = 1,
+    };
+
+    device._device.cmdSetViewport(this._command_buffer, 0, 1, @ptrCast(&viewport));
+
+    const scissor: vk.Rect2D = .{
+        .extent = .{ .width = image_size[0], .height = image_size[1] },
+        .offset = .{ .x = 0, .y = 0 },
+    };
+
+    device._device.cmdSetScissor(this._command_buffer, 0, 1, @ptrCast(&scissor));
+    device._device.cmdDraw(this._command_buffer, graphics_pipeline.vertex_count, 1, 0, 1);
+}

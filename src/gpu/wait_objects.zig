@@ -45,6 +45,10 @@ pub const Fence = struct {
 
     pub fn wait(this: *@This(), device: *Device, timeout_ns: ?u64) !void {
         const wait_all: vk.Bool32 = .true;
-        try device._device.waitForFences(1, @ptrCast(&this._fence), wait_all, timeout_ns orelse std.math.maxInt(u64));
+        return switch (try device._device.waitForFences(1, @ptrCast(&this._fence), wait_all, timeout_ns orelse std.math.maxInt(u64))) {
+            .success => {},
+            .timeout => error.Timeout,
+            else => unreachable,
+        };
     }
 };

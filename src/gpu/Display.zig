@@ -5,8 +5,8 @@ const vk = @import("vulkan");
 const Instance = @import("Instance.zig");
 const Device = @import("Device.zig");
 const RenderPass = @import("RenderPass.zig");
-// const Semaphore = @import("wait_objects.zig").Semaphore;
-// const Fence = @import("wait_objects.zig").Fence;
+const Semaphore = @import("wait_objects.zig").Semaphore;
+const Fence = @import("wait_objects.zig").Fence;
 const Image = @import("Image.zig");
 
 image_size: @Vector(2, u32),
@@ -54,18 +54,23 @@ pub fn deinit(this: *@This(), alloc: std.mem.Allocator) void {
 
 pub const initRenderPass = RenderPass.init;
 
-// pub fn acquireFramebufferIndex(this: *@This(), signal_semaphore: ?*Semaphore, signal_fence: ?*Fence, timeout_ns: u64) !u32 {
-//     const native_semaphore = if (signal_semaphore) |x| x._semaphore else null;
-//     const native_fence = if (signal_fence) |x| x._fence else null;
-//     var index: u32 = undefined;
-//
-//     if (vk.wrap(c.vkAcquireNextImageKHR(this.device._device, this._swapchain, timeout_ns, native_semaphore, native_fence, &index))) {
-//         return index;
-//     } else |err| switch (err) {
-//         vk.Error.VK_SUBOPTIMAL_KHR, vk.Error.VK_ERROR_OUT_OF_DATE_KHR => return error.DisplayOutOfDate,
-//         else => return err,
-//     }
-// }
+pub fn acquireFramebufferIndex(this: *@This(), signal_semaphore: ?*Semaphore, signal_fence: ?*Fence, timeout_ns: u64) !?u32 {
+    const native_semaphore = if (signal_semaphore) |x| x._semaphore else .null_handle;
+    const native_fence = if (signal_fence) |x| x._fence else .null_handle;
+
+    const result = this._device._device.acquireNextImageKHR(this._swapchain, timeout_ns, native_semaphore, native_fence) catch |err| switch (err) {
+        error.OutOfDateKHR => return null,
+        else => return err,
+    };
+
+    return switch (result.result) {
+        .success => result.image_index,
+        .timeout => error.Timeout,
+        .not_ready => error.NotReady,
+        .suboptimal_khr => null,
+        else => unreachable,
+    };
+}
 
 pub fn releaseFramebufferIndex(this: *@This(), index: u32) !void {
     try this._device._device.releaseSwapchainImagesEXT(&.{
@@ -74,37 +79,44 @@ pub fn releaseFramebufferIndex(this: *@This(), index: u32) !void {
     });
 }
 
-// // TODO: allow for multiple semaphores and fences
-// pub fn presentFramebuffer(this: *@This(), index: u32, wait_semaphore: ?*Semaphore, signal_fence: ?*Fence) !void {
-//     const native_semaphore = if (wait_semaphore) |x| &x._semaphore else null;
-//
-//     const present_fence_info: ?c.VkSwapchainPresentFenceInfoKHR = if (signal_fence) |x| .{
-//         .sType = c.VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR,
-//         .swapchainCount = 1,
-//         .pFences = &x._fence,
-//     } else null;
-//
-//     const present_info: c.VkPresentInfoKHR = .{
-//         .sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-//         .waitSemaphoreCount = if (wait_semaphore) |_| 1 else 0,
-//         .pWaitSemaphores = native_semaphore,
-//         .swapchainCount = 1,
-//         .pSwapchains = &this._swapchain,
-//         .pImageIndices = &index,
-//         .pResults = null,
-//         .pNext = if (signal_fence) |_| &present_fence_info.? else null,
-//     };
-//
-//     if (vk.wrap(c.vkQueuePresentKHR(this.device._graphics_queue, &present_info))) {} else |err| switch (err) {
-//         vk.Error.VK_SUBOPTIMAL_KHR, vk.Error.VK_ERROR_OUT_OF_DATE_KHR => return error.DisplayOutOfDate,
-//         else => return err,
-//     }
-// }
+const PresentResult = enum {
+    success,
+    suboptimal,
+    out_of_date,
+};
+
+// TODO: allow for multiple semaphores and fences
+pub fn presentFramebuffer(this: *@This(), index: u32, wait_semaphore: ?*Semaphore, signal_fence: ?*Fence) !PresentResult {
+    const native_semaphore = if (wait_semaphore) |x| &x._semaphore else null;
+    const fence_info: ?vk.SwapchainPresentFenceInfoEXT = if (signal_fence) |fence| .{
+        .swapchain_count = 1,
+        .p_fences = @ptrCast(&fence._fence),
+    } else null;
+
+    const result = this._device._device.queuePresentKHR(this._device._queue, &.{
+        .wait_semaphore_count = if (wait_semaphore) |_| 1 else 0,
+        .p_wait_semaphores = @ptrCast(native_semaphore),
+        .swapchain_count = 1,
+        .p_swapchains = @ptrCast(&this._swapchain),
+        .p_image_indices = @ptrCast(&index),
+        .p_results = null,
+        .p_next = if (signal_fence) |_| @ptrCast(&fence_info.?) else null,
+    }) catch |err| return switch (err) {
+        error.OutOfDateKHR => .out_of_date,
+        else => err,
+    };
+
+    return switch (result) {
+        .success => .success,
+        .suboptimal_khr => .suboptimal,
+        else => unreachable,
+    };
+}
 
 pub fn rebuild(this: *@This(), image_size: @Vector(2, u32), alloc: std.mem.Allocator) !void {
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     const old_swapchain = this._swapchain;
-    this.destroySwapchain(alloc);
+    this.deinitSwapchain(alloc);
     try this.initSwapchain(image_size, alloc);
     this._device._device.destroySwapchainKHR(old_swapchain, vk_alloc);
 }
