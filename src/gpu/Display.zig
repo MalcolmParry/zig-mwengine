@@ -136,6 +136,7 @@ fn initSwapchain(this: *@This(), image_size: @Vector(2, u32), alloc: std.mem.All
             .color_attachment_bit = true,
         },
         .image_sharing_mode = .exclusive,
+        // these don't need to be specified unless sharing mode is .concurrent
         .queue_family_index_count = 0,
         .p_queue_family_indices = null,
         .pre_transform = capabilities.current_transform,

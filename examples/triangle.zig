@@ -69,15 +69,15 @@ pub fn main() !void {
     var shader_set = try gpu.Shader.Set.init(vertex_shader, pixel_shader, &.{}, alloc);
     defer shader_set.deinit(alloc);
 
-    // var graphics_pipeline = try gpu.GraphicsPipeline.init(.{
-    //     .device = &device,
-    //     .render_pass = &render_pass,
-    //     .shader_set = &shader_set,
-    //     .vertex_count = 3,
-    //     .framebuffer_size = window.getClientSize(),
-    // });
-    // defer graphics_pipeline.deinit();
-    //
+    var graphics_pipeline = try gpu.GraphicsPipeline.init(.{
+        .device = &device,
+        .render_pass = &render_pass,
+        .shader_set = &shader_set,
+        .vertex_count = 3,
+        .framebuffer_size = window.getClientSize(),
+    });
+    defer graphics_pipeline.deinit();
+
     // const command_buffers = try alloc.alloc(gpu.CommandBuffer, frames_in_flight);
     // for (command_buffers) |*command_buffer| {
     //     command_buffer.* = try .init(&device);
