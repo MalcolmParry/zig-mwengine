@@ -89,40 +89,40 @@ pub fn main() !void {
         alloc.free(command_buffers);
     }
 
-    // const image_available_semaphores = try alloc.alloc(gpu.Semaphore, frames_in_flight);
-    // for (image_available_semaphores) |*x| {
-    //     x.* = try .init(&device);
-    // }
-    // defer {
-    //     for (image_available_semaphores) |*x| {
-    //         x.deinit();
-    //     }
-    //     alloc.free(image_available_semaphores);
-    // }
-    //
-    // const render_finished_semaphores = try alloc.alloc(gpu.Semaphore, frames_in_flight);
-    // for (render_finished_semaphores) |*x| {
-    //     x.* = try .init(&device);
-    // }
-    // defer {
-    //     for (render_finished_semaphores) |*x| {
-    //         x.deinit();
-    //     }
-    //     alloc.free(render_finished_semaphores);
-    // }
-    //
-    // const in_flight_fences = try alloc.alloc(gpu.Fence, frames_in_flight);
-    // for (in_flight_fences) |*x| {
-    //     x.* = try .init(&device, true);
-    // }
-    // defer {
-    //     for (in_flight_fences) |*x| {
-    //         x.deinit();
-    //     }
-    //     alloc.free(in_flight_fences);
-    // }
+    const image_available_semaphores = try alloc.alloc(gpu.Semaphore, frames_in_flight);
+    for (image_available_semaphores) |*x| {
+        x.* = try .init(&device);
+    }
+    defer {
+        for (image_available_semaphores) |*x| {
+            x.deinit(&device);
+        }
+        alloc.free(image_available_semaphores);
+    }
 
-    // defer device.waitUntilIdle() catch @panic("failed waiting for device");
+    const render_finished_semaphores = try alloc.alloc(gpu.Semaphore, frames_in_flight);
+    for (render_finished_semaphores) |*x| {
+        x.* = try .init(&device);
+    }
+    defer {
+        for (render_finished_semaphores) |*x| {
+            x.deinit(&device);
+        }
+        alloc.free(render_finished_semaphores);
+    }
+
+    const in_flight_fences = try alloc.alloc(gpu.Fence, frames_in_flight);
+    for (in_flight_fences) |*x| {
+        x.* = try .init(&device, true);
+    }
+    defer {
+        for (in_flight_fences) |*x| {
+            x.deinit(&device);
+        }
+        alloc.free(in_flight_fences);
+    }
+
+    defer device.waitUntilIdle() catch @panic("failed waiting for device");
     // var frame: u32 = 0;
     while (running) {
         // var command_buffer = command_buffers[frame];

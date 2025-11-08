@@ -1,60 +1,50 @@
 const std = @import("std");
-const vk = @import("vulkan.zig");
+const vk = @import("vulkan");
 const Device = @import("Device.zig");
-const c = vk.c;
 
 pub const Semaphore = struct {
-    device: *Device,
-    _semaphore: c.VkSemaphore,
+    _semaphore: vk.Semaphore,
 
     pub fn init(device: *Device) !@This() {
-        var this: @This() = undefined;
-        this.device = device;
+        const vk_alloc: ?*vk.AllocationCallbacks = null;
+        const semaphore = try device._device.createSemaphore(&.{
+            .flags = .{},
+        }, vk_alloc);
 
-        // TODO: allow creation of timeline semaphores
-        const create_info: c.VkSemaphoreCreateInfo = .{
-            .sType = c.VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .flags = 0,
-        };
-
-        try vk.wrap(c.vkCreateSemaphore(device._device, &create_info, null, &this._semaphore));
-
-        return this;
+        return .{ ._semaphore = semaphore };
     }
 
-    pub fn deinit(this: *@This()) void {
-        c.vkDestroySemaphore(this.device._device, this._semaphore, null);
+    pub fn deinit(this: *@This(), device: *Device) void {
+        const vk_alloc: ?*vk.AllocationCallbacks = null;
+        device._device.destroySemaphore(this._semaphore, vk_alloc);
     }
 };
 
 pub const Fence = struct {
-    device: *Device,
-    _fence: c.VkFence,
+    _fence: vk.Fence,
 
     pub fn init(device: *Device, signaled: bool) !@This() {
-        var this: @This() = undefined;
-        this.device = device;
+        const vk_alloc: ?*vk.AllocationCallbacks = null;
+        const fence = try device._device.createFence(&.{
+            .flags = .{
+                .signaled_bit = signaled,
+            },
+        }, vk_alloc);
 
-        const create_info: c.VkFenceCreateInfo = .{
-            .sType = c.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-            .flags = if (signaled) c.VK_FENCE_CREATE_SIGNALED_BIT else 0,
-        };
-
-        try vk.wrap(c.vkCreateFence(device._device, &create_info, null, &this._fence));
-
-        return this;
+        return .{ ._fence = fence };
     }
 
-    pub fn deinit(this: *@This()) void {
-        c.vkDestroyFence(this.device._device, this._fence, null);
+    pub fn deinit(this: *@This(), device: *Device) void {
+        const vk_alloc: ?*vk.AllocationCallbacks = null;
+        device._device.destroyFence(this._fence, vk_alloc);
     }
 
-    pub fn reset(this: *@This()) !void {
-        try vk.wrap(c.vkResetFences(this.device._device, 1, &this._fence));
+    pub fn reset(this: *@This(), device: *Device) !void {
+        try device._device.resetFences(1, @ptrCast(&this._fence));
     }
 
-    pub fn wait(this: *@This(), timeout_ns: ?u64) !void {
-        const wait_all = c.VK_TRUE;
-        try vk.wrap(c.vkWaitForFences(this.device._device, 1, &this._fence, wait_all, timeout_ns orelse std.math.maxInt(u64)));
+    pub fn wait(this: *@This(), device: *Device, timeout_ns: ?u64) !void {
+        const wait_all: vk.Bool32 = .true;
+        try device._device.waitForFences(1, @ptrCast(&this._fence), wait_all, timeout_ns orelse std.math.maxInt(u64));
     }
 };
