@@ -18,15 +18,18 @@ fn eventHandler() !void {
 }
 
 pub fn main() !void {
-    const alloc = std.heap.smp_allocator;
+    // const alloc = std.heap.smp_allocator;
+    var debug_alloc = std.heap.DebugAllocator(.{}).init;
+    defer _ = debug_alloc.deinit();
+    const alloc = debug_alloc.allocator();
 
     var profiler = try mw.Profiler.init(alloc);
     defer profiler.deinit();
     defer profiler.writeToFile("profiler.json") catch @panic("error from profiler");
     mw.Profiler.global = &profiler;
 
-    window = try mw.Window.init("TEST", 480, 340);
-    try window.setTitle("TEST");
+    window = try mw.Window.init("TEST", 480, 340, alloc);
+    try window.setTitle("TEST", alloc);
     defer window.deinit();
 
     var instance = try gpu.Instance.init(true, alloc);
@@ -34,38 +37,32 @@ pub fn main() !void {
 
     const physical_device = try instance.bestPhysicalDevice(alloc);
     var device = try instance.initDevice(&physical_device, alloc);
-    defer device.deinit();
+    defer device.deinit(alloc);
 
-    var display = try device.initDisplay(&window, alloc);
-    const frames_in_flight: u32 = @intCast(display.image_views.len);
+    var display = try device.initDisplay(&instance, &window, alloc);
+    const frames_in_flight = display.image_views.len;
     defer display.deinit(alloc);
 
     var render_pass = try display.initRenderPass();
-    defer render_pass.deinit();
+    defer render_pass.deinit(&display);
 
     const framebuffers = try alloc.alloc(gpu.Framebuffer, display.image_views.len);
     defer alloc.free(framebuffers);
-    for (framebuffers, display.image_views) |*framebuffer, *image_view| {
-        framebuffer.* = try .init(&device, &render_pass, display.image_size, &.{image_view}, alloc);
+    for (framebuffers, display.image_views) |*framebuffer, image_view| {
+        framebuffer.* = try .init(&device, &render_pass, display.image_size, &.{image_view});
     }
     defer for (framebuffers) |*framebuffer| {
         framebuffer.deinit(&device);
     };
 
-    // var buffer = try device.initBuffer(16, .{ .dst = true });
-    // defer buffer.deinit();
-    // const data: u128 = std.math.maxInt(u128);
-    // try buffer.setData(std.mem.asBytes(&data));
-
-    std.log.info("{s}", .{try std.fs.cwd().realpathAlloc(alloc, ".")});
     var vertex_shader = try createShader(&device, "res/shaders/triangle.vert.spv", .vertex, alloc);
-    defer vertex_shader.deinit();
+    defer vertex_shader.deinit(&device);
 
     var pixel_shader = try createShader(&device, "res/shaders/triangle.frag.spv", .pixel, alloc);
-    defer pixel_shader.deinit();
+    defer pixel_shader.deinit(&device);
 
     var shader_set = try gpu.Shader.Set.init(vertex_shader, pixel_shader, &.{}, alloc);
-    defer shader_set.deinit();
+    defer shader_set.deinit(alloc);
 
     var graphics_pipeline = try gpu.GraphicsPipeline.init(.{
         .device = &device,
@@ -93,7 +90,7 @@ pub fn main() !void {
     }
     defer {
         for (image_available_semaphores) |*x| {
-            x.deinit();
+            x.deinit(&device);
         }
         alloc.free(image_available_semaphores);
     }
@@ -104,7 +101,7 @@ pub fn main() !void {
     }
     defer {
         for (render_finished_semaphores) |*x| {
-            x.deinit();
+            x.deinit(&device);
         }
         alloc.free(render_finished_semaphores);
     }
@@ -115,64 +112,60 @@ pub fn main() !void {
     }
     defer {
         for (in_flight_fences) |*x| {
-            x.deinit();
+            x.deinit(&device);
         }
         alloc.free(in_flight_fences);
     }
 
     defer device.waitUntilIdle() catch @panic("failed waiting for device");
-    var frame: u32 = 0;
+    var frame: usize = 0;
     while (running) {
         var command_buffer = command_buffers[frame];
         var image_available_semaphore = image_available_semaphores[frame];
         var render_finished_semaphore = render_finished_semaphores[frame];
         var in_flight_fence = in_flight_fences[frame];
 
-        try in_flight_fence.wait(1_000_000_000);
-        try in_flight_fence.reset();
+        try in_flight_fence.wait(&device, 1_000_000_000);
+        try in_flight_fence.reset(&device);
 
-        var framebuffer_index: u32 = undefined;
-        while (true) {
-            if (display.acquireFramebufferIndex(&image_available_semaphore, null, 1_000_000_000)) |x| {
-                framebuffer_index = x;
-                break;
-            } else |err| switch (err) {
-                error.DisplayOutOfDate => {
-                    try device.waitUntilIdle();
-                    for (framebuffers) |*framebuffer| {
-                        framebuffer.deinit(&device);
-                    }
-                    try display.rebuild(window.getClientSize(), alloc);
-                    for (framebuffers, display.image_views) |*framebuffer, *image_view| {
-                        framebuffer.* = try .init(&device, &render_pass, display.image_size, &.{image_view}, alloc);
-                    }
-                },
-                else => return err,
+        const framebuffer_index = blk: {
+            for (0..3) |_| {
+                const result = try display.acquireFramebufferIndex(&image_available_semaphore, null, 1_000_000_000);
+                if (result) |x| break :blk x;
+
+                try device.waitUntilIdle();
+                for (framebuffers) |*framebuffer| {
+                    framebuffer.deinit(&device);
+                }
+                try display.rebuild(window.getClientSize(), alloc);
+                for (framebuffers, display.image_views) |*framebuffer, image_view| {
+                    framebuffer.* = try .init(&device, &render_pass, display.image_size, &.{image_view});
+                }
             }
-        }
+
+            return error.Failed;
+        };
+
         const framebuffer = &framebuffers[framebuffer_index];
         // std.log.debug("{}\n", .{framebuffer_index});
 
-        try command_buffer.reset();
-        try command_buffer.begin();
-        command_buffer.queueBeginRenderPass(&render_pass, framebuffer);
-        command_buffer.queueDraw(&graphics_pipeline, framebuffer);
-        command_buffer.queueEndRenderPass();
-        try command_buffer.end();
+        try command_buffer.reset(&device);
+        try command_buffer.begin(&device);
+        command_buffer.queueBeginRenderPass(&device, &render_pass, framebuffer);
+        command_buffer.queueDraw(&device, &graphics_pipeline, framebuffer);
+        command_buffer.queueEndRenderPass(&device);
+        try command_buffer.end(&device);
         try command_buffer.submit(&device, &image_available_semaphore, &render_finished_semaphore, null);
-        display.presentFramebuffer(framebuffer_index, &render_finished_semaphore, &in_flight_fence) catch |err| switch (err) {
-            error.DisplayOutOfDate => {
-                try device.waitUntilIdle();
-                for (framebuffers) |*x| {
-                    x.deinit(&device);
-                }
-                try display.rebuild(window.getClientSize(), alloc);
-                for (framebuffers, display.image_views) |*x, *image_view| {
-                    x.* = try .init(&device, &render_pass, display.image_size, &.{image_view}, alloc);
-                }
-            },
-            else => return err,
-        };
+        if (try display.presentFramebuffer(framebuffer_index, &render_finished_semaphore, &in_flight_fence) != .success) {
+            try device.waitUntilIdle();
+            for (framebuffers) |*x| {
+                x.deinit(&device);
+            }
+            try display.rebuild(window.getClientSize(), alloc);
+            for (framebuffers, display.image_views) |*x, image_view| {
+                x.* = try .init(&device, &render_pass, display.image_size, &.{image_view});
+            }
+        }
 
         eventHandler() catch {};
 
@@ -180,7 +173,7 @@ pub fn main() !void {
     }
 }
 
-fn createShader(device: *const gpu.Device, filepath: []const u8, stage: gpu.Shader.Stage, alloc: std.mem.Allocator) !gpu.Shader {
+fn createShader(device: *gpu.Device, filepath: []const u8, stage: gpu.Shader.Stage, alloc: std.mem.Allocator) !gpu.Shader {
     const file = try std.fs.cwd().openFile(filepath, .{ .mode = .read_only });
     defer file.close();
 
