@@ -40,7 +40,7 @@ pub fn main() !void {
     defer device.deinit(alloc);
 
     var display = try device.initDisplay(&instance, &window, alloc);
-    // const frames_in_flight: u32 = @intCast(display.image_views.len);
+    const frames_in_flight = display.image_views.len;
     defer display.deinit(alloc);
 
     var render_pass = try display.initRenderPass();
@@ -78,17 +78,17 @@ pub fn main() !void {
     });
     defer graphics_pipeline.deinit();
 
-    // const command_buffers = try alloc.alloc(gpu.CommandBuffer, frames_in_flight);
-    // for (command_buffers) |*command_buffer| {
-    //     command_buffer.* = try .init(&device);
-    // }
-    // defer {
-    //     for (command_buffers) |*command_buffer| {
-    //         command_buffer.deinit(&device);
-    //     }
-    //     alloc.free(command_buffers);
-    // }
-    //
+    const command_buffers = try alloc.alloc(gpu.CommandBuffer, frames_in_flight);
+    for (command_buffers) |*command_buffer| {
+        command_buffer.* = try .init(&device);
+    }
+    defer {
+        for (command_buffers) |*command_buffer| {
+            command_buffer.deinit(&device);
+        }
+        alloc.free(command_buffers);
+    }
+
     // const image_available_semaphores = try alloc.alloc(gpu.Semaphore, frames_in_flight);
     // for (image_available_semaphores) |*x| {
     //     x.* = try .init(&device);
