@@ -126,7 +126,7 @@ pub fn main() !void {
         var render_finished_semaphore = render_finished_semaphores[frame];
         var in_flight_fence = in_flight_fences[frame];
 
-        try in_flight_fence.wait(&device, 1_000_000_000);
+        try in_flight_fence.wait(&device, .all, 1_000_000_000);
         try in_flight_fence.reset(&device);
 
         const framebuffer_index = blk: {

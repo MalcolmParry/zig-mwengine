@@ -48,13 +48,16 @@ pub const Fence = struct {
     }
 
     pub const WaitForEnum = enum { single, all };
-    pub const WaitForResult = enum { success, timeout };
 
-    pub fn waitMany(these: []@This(), device: *Device, how_many: WaitForEnum, timeout_ns: ?u64) !WaitForResult {
+    pub fn waitMany(these: []const @This(), device: *Device, how_many: WaitForEnum, timeout_ns: ?u64) !void {
         const natives = _nativesFromSlice(these);
-        return switch (try device._device.waitForFences(natives.len, natives.ptr, how_many == .all, timeout_ns orelse std.math.maxInt(u64))) {
-            .success => .success,
-            .timeout => .timeout,
+        const wait_all: vk.Bool32 = switch (how_many) {
+            .single => .false,
+            .all => .true,
+        };
+        return switch (try device._device.waitForFences(@intCast(natives.len), natives.ptr, wait_all, timeout_ns orelse std.math.maxInt(u64))) {
+            .success => {},
+            .timeout => error.Timeout,
             else => unreachable,
         };
     }
@@ -71,7 +74,7 @@ pub const Fence = struct {
         };
     }
 
-    pub fn _nativesFromSlice(these: []@This()) []vk.Fence {
+    pub fn _nativesFromSlice(these: []const @This()) []const vk.Fence {
         return @ptrCast(these);
     }
 };
