@@ -120,6 +120,7 @@ pub fn main() !void {
     defer device.waitUntilIdle() catch @panic("failed waiting for device");
     var frame: usize = 0;
     while (running) {
+        var should_rebuild: bool = false;
         var command_buffer = command_buffers[frame];
         var image_available_semaphore = image_available_semaphores[frame];
         var render_finished_semaphore = render_finished_semaphores[frame];
@@ -130,16 +131,13 @@ pub fn main() !void {
 
         const framebuffer_index = blk: {
             for (0..3) |_| {
-                const result = try display.acquireFramebufferIndex(&image_available_semaphore, null, 1_000_000_000);
-                if (result) |x| break :blk x;
-
-                try device.waitUntilIdle();
-                for (framebuffers) |*framebuffer| {
-                    framebuffer.deinit(&device);
-                }
-                try display.rebuild(window.getClientSize(), alloc);
-                for (framebuffers, display.image_views) |*framebuffer, image_view| {
-                    framebuffer.* = try .init(&device, &render_pass, display.image_size, &.{image_view});
+                switch (try display.acquireImageIndex(&image_available_semaphore, null, 1_000_000_000)) {
+                    .success => |index| break :blk index,
+                    .suboptimal => |index| {
+                        should_rebuild = true;
+                        break :blk index;
+                    },
+                    .out_of_date => try rebuildDisplay(&device, &display, &render_pass, framebuffers, alloc),
                 }
             }
 
@@ -156,20 +154,25 @@ pub fn main() !void {
         command_buffer.queueEndRenderPass(&device);
         try command_buffer.end(&device);
         try command_buffer.submit(&device, &image_available_semaphore, &render_finished_semaphore, null);
-        if (try display.presentFramebuffer(framebuffer_index, &render_finished_semaphore, &in_flight_fence) != .success) {
-            try device.waitUntilIdle();
-            for (framebuffers) |*x| {
-                x.deinit(&device);
-            }
-            try display.rebuild(window.getClientSize(), alloc);
-            for (framebuffers, display.image_views) |*x, image_view| {
-                x.* = try .init(&device, &render_pass, display.image_size, &.{image_view});
-            }
-        }
+        if (try display.presentImage(framebuffer_index, &render_finished_semaphore, &in_flight_fence) != .success) should_rebuild = true;
+
+        if (should_rebuild)
+            try rebuildDisplay(&device, &display, &render_pass, framebuffers, alloc);
 
         eventHandler() catch {};
 
         frame = (frame + 1) % frames_in_flight;
+    }
+}
+
+fn rebuildDisplay(device: *gpu.Device, display: *gpu.Display, render_pass: *gpu.RenderPass, framebuffers: []gpu.Framebuffer, alloc: std.mem.Allocator) !void {
+    try device.waitUntilIdle();
+    for (framebuffers) |*x| {
+        x.deinit(device);
+    }
+    try display.rebuild(window.getClientSize(), alloc);
+    for (framebuffers, display.image_views) |*x, image_view| {
+        x.* = try .init(device, render_pass, display.image_size, &.{image_view});
     }
 }
 

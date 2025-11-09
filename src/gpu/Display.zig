@@ -54,25 +54,32 @@ pub fn deinit(this: *@This(), alloc: std.mem.Allocator) void {
 
 pub const initRenderPass = RenderPass.init;
 
-pub fn acquireFramebufferIndex(this: *@This(), signal_semaphore: ?*Semaphore, signal_fence: ?*Fence, timeout_ns: u64) !?u32 {
+pub const ImageIndex = u32;
+const AcquireImageIndexResult = union(PresentResult) {
+    success: ImageIndex,
+    suboptimal: ImageIndex,
+    out_of_date: void,
+};
+
+pub fn acquireImageIndex(this: *@This(), signal_semaphore: ?*Semaphore, signal_fence: ?*Fence, timeout_ns: u64) !AcquireImageIndexResult {
     const native_semaphore = if (signal_semaphore) |x| x._semaphore else .null_handle;
     const native_fence = if (signal_fence) |x| x._fence else .null_handle;
 
     const result = this._device._device.acquireNextImageKHR(this._swapchain, timeout_ns, native_semaphore, native_fence) catch |err| switch (err) {
-        error.OutOfDateKHR => return null,
+        error.OutOfDateKHR => return .out_of_date,
         else => return err,
     };
 
     return switch (result.result) {
-        .success => result.image_index,
+        .success => .{ .success = result.image_index },
         .timeout => error.Timeout,
         .not_ready => error.NotReady,
-        .suboptimal_khr => null,
+        .suboptimal_khr => .{ .suboptimal = result.image_index },
         else => unreachable,
     };
 }
 
-pub fn releaseFramebufferIndex(this: *@This(), index: u32) !void {
+pub fn releaseImageIndex(this: *@This(), index: u32) !void {
     try this._device._device.releaseSwapchainImagesEXT(&.{
         .image_index_count = 1,
         .p_image_indices = &index,
@@ -86,7 +93,7 @@ const PresentResult = enum {
 };
 
 // TODO: allow for multiple semaphores and fences
-pub fn presentFramebuffer(this: *@This(), index: u32, wait_semaphore: ?*Semaphore, signal_fence: ?*Fence) !PresentResult {
+pub fn presentImage(this: *@This(), index: u32, wait_semaphore: ?*Semaphore, signal_fence: ?*Fence) !PresentResult {
     const native_semaphore = if (wait_semaphore) |x| &x._semaphore else null;
     const fence_info: ?vk.SwapchainPresentFenceInfoEXT = if (signal_fence) |fence| .{
         .swapchain_count = 1,
