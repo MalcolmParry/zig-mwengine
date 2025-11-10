@@ -61,9 +61,9 @@ const AcquireImageIndexResult = union(PresentResult) {
     out_of_date: void,
 };
 
-pub fn acquireImageIndex(this: *@This(), signal_semaphore: ?*Semaphore, signal_fence: ?*Fence, timeout_ns: u64) !AcquireImageIndexResult {
-    const native_semaphore = if (signal_semaphore) |x| x._semaphore else .null_handle;
-    const native_fence = if (signal_fence) |x| x._fence else .null_handle;
+pub fn acquireImageIndex(this: *@This(), maybe_signal_semaphore: ?Semaphore, maybe_signal_fence: ?Fence, timeout_ns: u64) !AcquireImageIndexResult {
+    const native_semaphore = if (maybe_signal_semaphore) |x| x._semaphore else .null_handle;
+    const native_fence = if (maybe_signal_fence) |x| x._fence else .null_handle;
 
     const result = this._device._device.acquireNextImageKHR(this._swapchain, timeout_ns, native_semaphore, native_fence) catch |err| switch (err) {
         error.OutOfDateKHR => return .out_of_date,
@@ -92,22 +92,20 @@ const PresentResult = enum {
     out_of_date,
 };
 
-// TODO: allow for multiple semaphores and fences
-pub fn presentImage(this: *@This(), index: u32, wait_semaphore: ?*Semaphore, signal_fence: ?*Fence) !PresentResult {
-    const native_semaphore = if (wait_semaphore) |x| &x._semaphore else null;
-    const fence_info: ?vk.SwapchainPresentFenceInfoEXT = if (signal_fence) |fence| .{
+pub fn presentImage(this: *@This(), index: u32, wait_semaphores: []const Semaphore, maybe_signal_fence: ?Fence) !PresentResult {
+    const maybe_fence_info: ?vk.SwapchainPresentFenceInfoEXT = if (maybe_signal_fence) |fence| .{
         .swapchain_count = 1,
         .p_fences = @ptrCast(&fence._fence),
     } else null;
 
     const result = this._device._device.queuePresentKHR(this._device._queue, &.{
-        .wait_semaphore_count = if (wait_semaphore) |_| 1 else 0,
-        .p_wait_semaphores = @ptrCast(native_semaphore),
+        .wait_semaphore_count = @intCast(wait_semaphores.len),
+        .p_wait_semaphores = Semaphore._nativesFromSlice(wait_semaphores),
         .swapchain_count = 1,
         .p_swapchains = @ptrCast(&this._swapchain),
         .p_image_indices = @ptrCast(&index),
         .p_results = null,
-        .p_next = if (signal_fence) |_| @ptrCast(&fence_info.?) else null,
+        .p_next = if (maybe_fence_info) |x| @ptrCast(&x) else null,
     }) catch |err| return switch (err) {
         error.OutOfDateKHR => .out_of_date,
         else => err,

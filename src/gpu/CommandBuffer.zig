@@ -39,12 +39,7 @@ pub fn reset(this: *@This(), device: *Device) !void {
     try device._device.resetCommandBuffer(this._command_buffer, .{});
 }
 
-// TODO: allow for multiple semaphores
-pub fn submit(this: *@This(), device: *Device, wait_semaphore: ?*Semaphore, signal_semaphore: ?*Semaphore, signal_fence: ?*Fence) !void {
-    const native_wait_semaphore = if (wait_semaphore) |x| &x._semaphore else null;
-    const native_signal_semaphore = if (signal_semaphore) |x| &x._semaphore else null;
-    const native_signal_fence = if (signal_fence) |x| x._fence else null;
-
+pub fn submit(this: *@This(), device: *Device, wait_semaphores: []const Semaphore, signal_semaphores: []const Semaphore, signal_fence: ?Fence) !void {
     const wait_dst_stage_mask: vk.PipelineStageFlags = .{
         .color_attachment_output_bit = true,
     };
@@ -52,14 +47,14 @@ pub fn submit(this: *@This(), device: *Device, wait_semaphore: ?*Semaphore, sign
     const submit_info: vk.SubmitInfo = .{
         .command_buffer_count = 1,
         .p_command_buffers = @ptrCast(&this._command_buffer),
-        .wait_semaphore_count = if (wait_semaphore) |_| 1 else 0,
-        .p_wait_semaphores = @ptrCast(native_wait_semaphore),
-        .signal_semaphore_count = if (signal_semaphore) |_| 1 else 0,
-        .p_signal_semaphores = @ptrCast(native_signal_semaphore),
+        .wait_semaphore_count = @intCast(wait_semaphores.len),
+        .p_wait_semaphores = Semaphore._nativesFromSlice(wait_semaphores),
+        .signal_semaphore_count = @intCast(signal_semaphores.len),
+        .p_signal_semaphores = Semaphore._nativesFromSlice(signal_semaphores),
         .p_wait_dst_stage_mask = @ptrCast(&wait_dst_stage_mask),
     };
 
-    try device._device.queueSubmit(device._queue, 1, @ptrCast(&submit_info), native_signal_fence orelse .null_handle);
+    try device._device.queueSubmit(device._queue, 1, @ptrCast(&submit_info), if (signal_fence) |fence| fence._fence else .null_handle);
 }
 
 // Graphics Commands

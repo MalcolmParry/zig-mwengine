@@ -122,8 +122,8 @@ pub fn main() !void {
     while (running) {
         var should_rebuild: bool = false;
         var command_buffer = command_buffers[frame];
-        var image_available_semaphore = image_available_semaphores[frame];
-        var render_finished_semaphore = render_finished_semaphores[frame];
+        const image_available_semaphore = image_available_semaphores[frame];
+        const render_finished_semaphore = render_finished_semaphores[frame];
         var in_flight_fence = in_flight_fences[frame];
 
         try in_flight_fence.wait(&device, .all, 1_000_000_000);
@@ -131,7 +131,7 @@ pub fn main() !void {
 
         const framebuffer_index = blk: {
             for (0..3) |_| {
-                switch (try display.acquireImageIndex(&image_available_semaphore, null, 1_000_000_000)) {
+                switch (try display.acquireImageIndex(image_available_semaphore, null, 1_000_000_000)) {
                     .success => |index| break :blk index,
                     .suboptimal => |index| {
                         should_rebuild = true;
@@ -153,8 +153,8 @@ pub fn main() !void {
         command_buffer.queueDraw(&device, &graphics_pipeline, framebuffer);
         command_buffer.queueEndRenderPass(&device);
         try command_buffer.end(&device);
-        try command_buffer.submit(&device, &image_available_semaphore, &render_finished_semaphore, null);
-        if (try display.presentImage(framebuffer_index, &render_finished_semaphore, &in_flight_fence) != .success) should_rebuild = true;
+        try command_buffer.submit(&device, &.{image_available_semaphore}, &.{render_finished_semaphore}, null);
+        if (try display.presentImage(framebuffer_index, &.{render_finished_semaphore}, in_flight_fence) != .success) should_rebuild = true;
 
         if (should_rebuild)
             try rebuildDisplay(&device, &display, &render_pass, framebuffers, alloc);

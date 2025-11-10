@@ -14,12 +14,13 @@ pub const Semaphore = struct {
         return .{ ._semaphore = semaphore };
     }
 
-    pub fn deinit(this: *@This(), device: *Device) void {
+    pub fn deinit(this: @This(), device: *Device) void {
         const vk_alloc: ?*vk.AllocationCallbacks = null;
         device._device.destroySemaphore(this._semaphore, vk_alloc);
     }
 
-    pub fn _nativesFromSlice(these: []@This()) []vk.Semaphore {
+    pub fn _nativesFromSlice(these: []const @This()) ?[*]const vk.Semaphore {
+        if (these.len == 0) return null;
         return @ptrCast(these);
     }
 };
@@ -38,24 +39,23 @@ pub const Fence = struct {
         return .{ ._fence = fence };
     }
 
-    pub fn deinit(this: *@This(), device: *Device) void {
+    pub fn deinit(this: @This(), device: *Device) void {
         const vk_alloc: ?*vk.AllocationCallbacks = null;
         device._device.destroyFence(this._fence, vk_alloc);
     }
 
-    pub fn reset(this: *@This(), device: *Device) !void {
+    pub fn reset(this: @This(), device: *Device) !void {
         try device._device.resetFences(1, @ptrCast(&this._fence));
     }
 
     pub const WaitForEnum = enum { single, all };
 
     pub fn waitMany(these: []const @This(), device: *Device, how_many: WaitForEnum, timeout_ns: ?u64) !void {
-        const natives = _nativesFromSlice(these);
         const wait_all: vk.Bool32 = switch (how_many) {
             .single => .false,
             .all => .true,
         };
-        return switch (try device._device.waitForFences(@intCast(natives.len), natives.ptr, wait_all, timeout_ns orelse std.math.maxInt(u64))) {
+        return switch (try device._device.waitForFences(@intCast(these.len), _nativesFromSlice(these).?, wait_all, timeout_ns orelse std.math.maxInt(u64))) {
             .success => {},
             .timeout => error.Timeout,
             else => unreachable,
@@ -74,7 +74,8 @@ pub const Fence = struct {
         };
     }
 
-    pub fn _nativesFromSlice(these: []const @This()) []const vk.Fence {
+    pub fn _nativesFromSlice(these: []const @This()) ?[*]const vk.Fence {
+        if (these.len == 0) return null;
         return @ptrCast(these);
     }
 };
