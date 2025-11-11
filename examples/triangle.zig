@@ -28,7 +28,7 @@ pub fn main() !void {
     defer profiler.writeToFile("profiler.json") catch @panic("error from profiler");
     mw.Profiler.global = &profiler;
 
-    window = try mw.Window.init("TEST", 480, 340, alloc);
+    window = try mw.Window.init("TEST", .{ 480, 340 }, alloc);
     try window.setTitle("TEST", alloc);
     defer window.deinit();
 

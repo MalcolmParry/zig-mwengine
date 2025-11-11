@@ -12,13 +12,13 @@ pub const Window = struct {
     _window: c.Window,
     _wm_delete_message: c.Atom,
 
-    pub fn init(class: []const u8, width: u32, height: u32, alloc: std.mem.Allocator) !Window {
+    pub fn init(class: []const u8, size: @Vector(2, u32), alloc: std.mem.Allocator) !Window {
         var this: Window = undefined;
 
         this._display = c.XOpenDisplay(null) orelse return error.FailedToOpenDisplay;
         errdefer _ = c.XCloseDisplay(this._display);
 
-        this._window = c.XCreateSimpleWindow(this._display, c.XDefaultRootWindow(this._display), 0, 0, width, height, 0, 0, 0);
+        this._window = c.XCreateSimpleWindow(this._display, c.XDefaultRootWindow(this._display), 0, 0, size[0], size[1], 0, 0, 0);
         if (this._window == 0) return error.FailedToCreateWindow;
         errdefer _ = c.XDestroyWindow(this._display, this._window);
 
