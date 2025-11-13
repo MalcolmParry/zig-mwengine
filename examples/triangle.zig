@@ -44,7 +44,7 @@ pub fn main() !void {
     const framebuffers = try alloc.alloc(gpu.Framebuffer, display.image_views.len);
     defer alloc.free(framebuffers);
     for (framebuffers, display.image_views) |*framebuffer, image_view| {
-        framebuffer.* = try .init(&device, &render_pass, display.image_size, &.{image_view});
+        framebuffer.* = try .init(&device, render_pass, display.image_size, &.{image_view});
     }
     defer for (framebuffers) |*framebuffer| {
         framebuffer.deinit(&device);
@@ -61,12 +61,12 @@ pub fn main() !void {
 
     var graphics_pipeline = try gpu.GraphicsPipeline.init(.{
         .device = &device,
-        .render_pass = &render_pass,
-        .shader_set = &shader_set,
+        .render_pass = render_pass,
+        .shader_set = shader_set,
         .vertex_count = 3,
         .framebuffer_size = window.getClientSize(),
     });
-    defer graphics_pipeline.deinit();
+    defer graphics_pipeline.deinit(&device);
 
     const command_buffers = try alloc.alloc(gpu.CommandBuffer, frames_in_flight);
     for (command_buffers) |*command_buffer| {
@@ -132,26 +132,26 @@ pub fn main() !void {
                         should_rebuild = true;
                         break :blk index;
                     },
-                    .out_of_date => try rebuildDisplay(&device, &display, &render_pass, framebuffers, alloc),
+                    .out_of_date => try rebuildDisplay(&device, &display, render_pass, framebuffers, alloc),
                 }
             }
 
             return error.Failed;
         };
 
-        const framebuffer = &framebuffers[framebuffer_index];
+        const framebuffer = framebuffers[framebuffer_index];
 
         try command_buffer.reset(&device);
         try command_buffer.begin(&device);
-        command_buffer.queueBeginRenderPass(&device, &render_pass, framebuffer);
-        command_buffer.queueDraw(&device, &graphics_pipeline, framebuffer);
+        command_buffer.queueBeginRenderPass(&device, render_pass, framebuffer);
+        command_buffer.queueDraw(&device, graphics_pipeline, framebuffer);
         command_buffer.queueEndRenderPass(&device);
         try command_buffer.end(&device);
         try command_buffer.submit(&device, &.{image_available_semaphore}, &.{render_finished_semaphore}, null);
         if (try display.presentImage(framebuffer_index, &.{render_finished_semaphore}, in_flight_fence) != .success) should_rebuild = true;
 
         if (should_rebuild)
-            try rebuildDisplay(&device, &display, &render_pass, framebuffers, alloc);
+            try rebuildDisplay(&device, &display, render_pass, framebuffers, alloc);
 
         eventHandler() catch {};
 
@@ -159,7 +159,7 @@ pub fn main() !void {
     }
 }
 
-fn rebuildDisplay(device: *gpu.Device, display: *gpu.Display, render_pass: *gpu.RenderPass, framebuffers: []gpu.Framebuffer, alloc: std.mem.Allocator) !void {
+fn rebuildDisplay(device: *gpu.Device, display: *gpu.Display, render_pass: gpu.RenderPass, framebuffers: []gpu.Framebuffer, alloc: std.mem.Allocator) !void {
     try device.waitUntilIdle();
     for (framebuffers) |*x| {
         x.deinit(device);

@@ -7,13 +7,12 @@ const Shader = @import("Shader.zig");
 
 pub const CreateInfo = struct {
     device: *Device,
-    render_pass: *RenderPass,
+    render_pass: RenderPass,
     framebuffer_size: @Vector(2, u32),
-    shader_set: *Shader.Set,
+    shader_set: Shader.Set,
     vertex_count: u32,
 };
 
-device: *Device,
 _pipeline: vk.Pipeline,
 _pipeline_layout: vk.PipelineLayout,
 vertex_count: u32,
@@ -180,20 +179,19 @@ pub fn init(create_info: CreateInfo) !@This() {
     if (try native_device.createGraphicsPipelines(.null_handle, 1, @ptrCast(&pipeline_create_info), vk_alloc, @ptrCast(&pipeline)) != .success) return error.Unknown;
 
     return .{
-        .device = create_info.device,
         .vertex_count = create_info.vertex_count,
         ._pipeline = pipeline,
         ._pipeline_layout = pipeline_layout,
     };
 }
 
-pub fn deinit(this: *@This()) void {
+pub fn deinit(this: *@This(), device: *Device) void {
     const zone = tracy.Zone.begin(.{
         .src = @src(),
     });
     defer zone.end();
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
-    this.device._device.destroyPipeline(this._pipeline, vk_alloc);
-    this.device._device.destroyPipelineLayout(this._pipeline_layout, vk_alloc);
+    device._device.destroyPipeline(this._pipeline, vk_alloc);
+    device._device.destroyPipelineLayout(this._pipeline_layout, vk_alloc);
 }

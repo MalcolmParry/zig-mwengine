@@ -57,7 +57,7 @@ pub fn submit(this: *@This(), device: *Device, wait_semaphores: []const Semaphor
 }
 
 // Graphics Commands
-pub fn queueBeginRenderPass(this: *@This(), device: *Device, render_pass: *RenderPass, framebuffer: *Framebuffer) void {
+pub fn queueBeginRenderPass(this: *@This(), device: *Device, render_pass: RenderPass, framebuffer: Framebuffer) void {
     const size = framebuffer.image_size;
 
     const clear_value: vk.ClearValue = .{
@@ -80,7 +80,7 @@ pub fn queueEndRenderPass(this: *@This(), device: *Device) void {
     device._device.cmdEndRenderPass(this._command_buffer);
 }
 
-pub fn queueDraw(this: *@This(), device: *Device, graphics_pipeline: *GraphicsPipeline, framebuffer: *Framebuffer) void {
+pub fn queueDraw(this: *@This(), device: *Device, graphics_pipeline: GraphicsPipeline, framebuffer: Framebuffer) void {
     const image_size = framebuffer.image_size;
 
     device._device.cmdBindPipeline(this._command_buffer, .graphics, graphics_pipeline._pipeline);
