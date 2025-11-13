@@ -1,5 +1,5 @@
 const std = @import("std");
-const Profiler = @import("../Profiler.zig");
+const tracy = @import("tracy");
 const vk = @import("vulkan");
 const Device = @import("Device.zig");
 const platform = @import("../platform.zig");
@@ -26,8 +26,10 @@ const Error = error{
 
 //  TODO: add app version to paramerers
 pub fn init(debug_logging: bool, alloc: std.mem.Allocator) !@This() {
-    var prof = Profiler.startFuncProfiler(@src());
-    defer prof.stop();
+    const zone = tracy.Zone.begin(.{
+        .src = @src(),
+    });
+    defer zone.end();
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     // TODO: is platform specific
@@ -124,8 +126,10 @@ pub fn init(debug_logging: bool, alloc: std.mem.Allocator) !@This() {
 }
 
 pub fn deinit(this: *@This(), alloc: std.mem.Allocator) void {
-    var prof = Profiler.startFuncProfiler(@src());
-    defer prof.stop();
+    const zone = tracy.Zone.begin(.{
+        .src = @src(),
+    });
+    defer zone.end();
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     alloc.free(this._physical_devices);
@@ -139,8 +143,10 @@ pub fn deinit(this: *@This(), alloc: std.mem.Allocator) void {
 pub const initDevice = Device.init;
 
 pub fn bestPhysicalDevice(this: *const @This(), alloc: std.mem.Allocator) !Device.Physical {
-    var prof = Profiler.startFuncProfiler(@src());
-    defer prof.stop();
+    const zone = tracy.Zone.begin(.{
+        .src = @src(),
+    });
+    defer zone.end();
 
     _ = alloc;
 

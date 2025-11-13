@@ -1,5 +1,5 @@
 const std = @import("std");
-const Profiler = @import("../Profiler.zig");
+const tracy = @import("tracy");
 const platform = @import("../platform.zig");
 const vk = @import("vulkan");
 const Instance = @import("Instance.zig");
@@ -19,8 +19,12 @@ _instance: vk.InstanceProxy,
 _device: *Device,
 
 pub fn init(device: *Device, instance: *Instance, window: *platform.Window, alloc: std.mem.Allocator) !@This() {
-    const vk_alloc: ?*vk.AllocationCallbacks = null;
+    const zone = tracy.Zone.begin(.{
+        .src = @src(),
+    });
+    defer zone.end();
 
+    const vk_alloc: ?*vk.AllocationCallbacks = null;
     // TODO: change createSurface function to accept ?*vk.AllocationCallbacks
     const surface = try platform.vulkan.createSurface(window, instance._instance);
     errdefer instance._instance.destroySurfaceKHR(surface, vk_alloc);
@@ -43,8 +47,10 @@ pub fn init(device: *Device, instance: *Instance, window: *platform.Window, allo
 }
 
 pub fn deinit(this: *@This(), alloc: std.mem.Allocator) void {
-    var prof = Profiler.startFuncProfiler(@src());
-    defer prof.stop();
+    const zone = tracy.Zone.begin(.{
+        .src = @src(),
+    });
+    defer zone.end();
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     this.deinitSwapchain(alloc);
@@ -127,9 +133,6 @@ pub fn rebuild(this: *@This(), image_size: @Vector(2, u32), alloc: std.mem.Alloc
 }
 
 fn initSwapchain(this: *@This(), image_size: @Vector(2, u32), alloc: std.mem.Allocator) !void {
-    var prof = Profiler.startFuncProfiler(@src());
-    defer prof.stop();
-
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     const old_swapchain: vk.SwapchainKHR = this._swapchain;
     this.image_size = image_size;

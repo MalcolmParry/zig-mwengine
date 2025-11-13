@@ -1,5 +1,5 @@
 const std = @import("std");
-const Profiler = @import("../Profiler.zig");
+const tracy = @import("tracy");
 const vk = @import("vulkan");
 const Device = @import("Device.zig");
 const RenderPass = @import("RenderPass.zig");
@@ -19,8 +19,10 @@ _pipeline_layout: vk.PipelineLayout,
 vertex_count: u32,
 
 pub fn init(create_info: CreateInfo) !@This() {
-    var prof = Profiler.startFuncProfiler(@src());
-    defer prof.stop();
+    const zone = tracy.Zone.begin(.{
+        .src = @src(),
+    });
+    defer zone.end();
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     const native_device = create_info.device._device;
@@ -186,8 +188,10 @@ pub fn init(create_info: CreateInfo) !@This() {
 }
 
 pub fn deinit(this: *@This()) void {
-    var prof = Profiler.startFuncProfiler(@src());
-    defer prof.stop();
+    const zone = tracy.Zone.begin(.{
+        .src = @src(),
+    });
+    defer zone.end();
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     this.device._device.destroyPipeline(this._pipeline, vk_alloc);

@@ -1,5 +1,5 @@
 const std = @import("std");
-const Profiler = @import("../Profiler.zig");
+const tracy = @import("tracy");
 const vk = @import("vulkan");
 const Instance = @import("Instance.zig");
 const Display = @import("Display.zig");
@@ -20,8 +20,10 @@ _queue_family_index: u32,
 _command_pool: vk.CommandPool,
 
 pub fn init(instance: *const Instance, physical_device: *const Physical, alloc: std.mem.Allocator) !@This() {
-    var prof = Profiler.startFuncProfiler(@src());
-    defer prof.stop();
+    const zone = tracy.Zone.begin(.{
+        .src = @src(),
+    });
+    defer zone.end();
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     const queue_priority: f32 = 1;
@@ -85,8 +87,10 @@ pub fn init(instance: *const Instance, physical_device: *const Physical, alloc: 
 }
 
 pub fn deinit(this: *@This(), alloc: std.mem.Allocator) void {
-    var prof = Profiler.startFuncProfiler(@src());
-    defer prof.stop();
+    const zone = tracy.Zone.begin(.{
+        .src = @src(),
+    });
+    defer zone.end();
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     this._device.destroyCommandPool(this._command_pool, vk_alloc);

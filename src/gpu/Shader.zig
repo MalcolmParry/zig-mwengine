@@ -1,5 +1,5 @@
 const std = @import("std");
-const Profiler = @import("../Profiler.zig");
+const tracy = @import("tracy");
 const vk = @import("vulkan");
 const Device = @import("Device.zig");
 
@@ -9,8 +9,10 @@ _shader_module: vk.ShaderModule,
 _stage: vk.ShaderStageFlags,
 
 pub fn fromSpirv(device: *Device, stage: Stage, spirvByteCode: []const u32) !@This() {
-    var prof = Profiler.startFuncProfiler(@src());
-    defer prof.stop();
+    const zone = tracy.Zone.begin(.{
+        .src = @src(),
+    });
+    defer zone.end();
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     const shader_module = try device._device.createShaderModule(&.{
@@ -28,8 +30,10 @@ pub fn fromSpirv(device: *Device, stage: Stage, spirvByteCode: []const u32) !@Th
 }
 
 pub fn deinit(this: *@This(), device: *Device) void {
-    var prof = Profiler.startFuncProfiler(@src());
-    defer prof.stop();
+    const zone = tracy.Zone.begin(.{
+        .src = @src(),
+    });
+    defer zone.end();
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     device._device.destroyShaderModule(this._shader_module, vk_alloc);

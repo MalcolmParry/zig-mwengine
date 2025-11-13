@@ -1,5 +1,7 @@
 const std = @import("std");
 const mw = @import("mwengine");
+pub const tracy_impl = @import("tracy_impl");
+pub const tracy = @import("tracy");
 const gpu = mw.gpu;
 
 var window: mw.Window = undefined;
@@ -18,15 +20,8 @@ fn eventHandler() !void {
 }
 
 pub fn main() !void {
-    // const alloc = std.heap.smp_allocator;
-    var debug_alloc = std.heap.DebugAllocator(.{}).init;
-    defer _ = debug_alloc.deinit();
-    const alloc = debug_alloc.allocator();
-
-    var profiler = try mw.Profiler.init(alloc);
-    defer profiler.deinit();
-    defer profiler.writeToFile("profiler.json") catch @panic("error from profiler");
-    mw.Profiler.global = &profiler;
+    var tracy_allocator: tracy.Allocator = .{ .parent = std.heap.smp_allocator };
+    const alloc = tracy_allocator.allocator();
 
     window = try mw.Window.init("TEST", .{ 480, 340 }, alloc);
     try window.setTitle("TEST", alloc);
@@ -145,7 +140,6 @@ pub fn main() !void {
         };
 
         const framebuffer = &framebuffers[framebuffer_index];
-        // std.log.debug("{}\n", .{framebuffer_index});
 
         try command_buffer.reset(&device);
         try command_buffer.begin(&device);

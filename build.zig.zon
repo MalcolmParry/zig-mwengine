@@ -18,5 +18,9 @@
             .url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/v1.3.283.tar.gz",
             .hash = "N-V-__8AAAkkoQGn5z1yoNVrwqZfnYmZp8AZ5CJgoHRMQI0c",
         },
+        .tracy = .{
+            .url = "git+https://github.com/Games-by-Mason/tracy_zig.git#81acd22b8218668ad1215835fb21d63bf04ae6b4",
+            .hash = "tracy-0.0.0-R7l8BSJIAQCSQWVPOIr-kFep8eSZzkD60a2h5O0gt3S2",
+        },
     },
 }

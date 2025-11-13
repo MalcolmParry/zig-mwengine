@@ -9,11 +9,6 @@ pub fn build(b: *Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const profiling = b.option(bool, "profiling", "Enable profiling") orelse (optimize == .Debug);
-
-    const opts = b.addOptions();
-    opts.addOption(bool, "profiling", profiling);
-
     const module = b.addModule("mwengine", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
@@ -21,11 +16,16 @@ pub fn build(b: *Build) !void {
         .link_libc = true,
     });
 
+    const tracy = b.dependency("tracy", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    module.addImport("tracy", tracy.module("tracy"));
     const vulkan = b.dependency("vulkan", .{
         .registry = b.dependency("vulkan_headers", .{}).path("registry/vk.xml"),
     }).module("vulkan-zig");
 
-    module.addOptions("build-options", opts);
     module.addImport("vulkan", vulkan);
     module.linkSystemLibrary("X11", .{});
 
@@ -42,6 +42,15 @@ pub fn build(b: *Build) !void {
             }},
         }),
     });
+
+    const enable_tracy = b.option(bool, "tracy", "Build with tracy") orelse false;
+
+    example.root_module.addImport("tracy", tracy.module("tracy"));
+    if (enable_tracy) {
+        example.root_module.addImport("tracy_impl", tracy.module("tracy_impl_enabled"));
+    } else {
+        example.root_module.addImport("tracy_impl", tracy.module("tracy_impl_disabled"));
+    }
 
     // build the example
     const example_build_artifact = b.addInstallArtifact(example, .{});
