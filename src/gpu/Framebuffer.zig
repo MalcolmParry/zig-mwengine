@@ -4,7 +4,6 @@ const Device = @import("Device.zig");
 const RenderPass = @import("RenderPass.zig");
 const Image = @import("Image.zig");
 
-image_size: @Vector(2, u32),
 _framebuffer: vk.Framebuffer,
 
 pub fn init(device: *Device, render_pass: RenderPass, image_size: @Vector(2, u32), image_views: []const Image.View) !@This() {
@@ -19,7 +18,6 @@ pub fn init(device: *Device, render_pass: RenderPass, image_size: @Vector(2, u32
     }, vk_alloc);
 
     return .{
-        .image_size = image_size,
         ._framebuffer = framebuffer,
     };
 }

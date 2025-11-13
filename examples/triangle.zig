@@ -143,8 +143,8 @@ pub fn main() !void {
 
         try command_buffer.reset(&device);
         try command_buffer.begin(&device);
-        command_buffer.queueBeginRenderPass(&device, render_pass, framebuffer);
-        command_buffer.queueDraw(&device, graphics_pipeline, framebuffer);
+        command_buffer.queueBeginRenderPass(&device, render_pass, framebuffer, display.image_size);
+        command_buffer.queueDraw(&device, graphics_pipeline, display.image_size);
         command_buffer.queueEndRenderPass(&device);
         try command_buffer.end(&device);
         try command_buffer.submit(&device, &.{image_available_semaphore}, &.{render_finished_semaphore}, null);

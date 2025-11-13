@@ -57,9 +57,7 @@ pub fn submit(this: *@This(), device: *Device, wait_semaphores: []const Semaphor
 }
 
 // Graphics Commands
-pub fn queueBeginRenderPass(this: *@This(), device: *Device, render_pass: RenderPass, framebuffer: Framebuffer) void {
-    const size = framebuffer.image_size;
-
+pub fn queueBeginRenderPass(this: *@This(), device: *Device, render_pass: RenderPass, framebuffer: Framebuffer, image_size: @Vector(2, u32)) void {
     const clear_value: vk.ClearValue = .{
         .color = .{ .float_32 = .{ 0, 0, 0, 1 } },
     };
@@ -70,7 +68,7 @@ pub fn queueBeginRenderPass(this: *@This(), device: *Device, render_pass: Render
         .clear_value_count = 1,
         .p_clear_values = @ptrCast(&clear_value),
         .render_area = .{
-            .extent = .{ .width = size[0], .height = size[1] },
+            .extent = .{ .width = image_size[0], .height = image_size[1] },
             .offset = .{ .x = 0, .y = 0 },
         },
     }, .@"inline");
@@ -80,9 +78,7 @@ pub fn queueEndRenderPass(this: *@This(), device: *Device) void {
     device._device.cmdEndRenderPass(this._command_buffer);
 }
 
-pub fn queueDraw(this: *@This(), device: *Device, graphics_pipeline: GraphicsPipeline, framebuffer: Framebuffer) void {
-    const image_size = framebuffer.image_size;
-
+pub fn queueDraw(this: *@This(), device: *Device, graphics_pipeline: GraphicsPipeline, image_size: @Vector(2, u32)) void {
     device._device.cmdBindPipeline(this._command_buffer, .graphics, graphics_pipeline._pipeline);
 
     const viewport: vk.Viewport = .{
