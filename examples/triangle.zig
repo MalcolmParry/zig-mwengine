@@ -121,12 +121,12 @@ pub fn main() !void {
         const render_finished_semaphore = render_finished_semaphores[frame];
         var in_flight_fence = in_flight_fences[frame];
 
-        try in_flight_fence.wait(&device, .all, 1_000_000_000);
+        try in_flight_fence.wait(&device, .all, std.time.ns_per_s);
         try in_flight_fence.reset(&device);
 
         const framebuffer_index = blk: {
             for (0..3) |_| {
-                switch (try display.acquireImageIndex(image_available_semaphore, null, 1_000_000_000)) {
+                switch (try display.acquireImageIndex(image_available_semaphore, null, std.time.ns_per_s)) {
                     .success => |index| break :blk index,
                     .suboptimal => |index| {
                         should_rebuild = true;

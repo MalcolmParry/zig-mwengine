@@ -1,10 +1,12 @@
-pub const Instance = @import("gpu/Instance.zig");
-pub const Device = @import("gpu/Device.zig");
-pub const Display = @import("gpu/Display.zig");
-pub const RenderPass = @import("gpu/RenderPass.zig");
-pub const Shader = @import("gpu/Shader.zig");
-pub const GraphicsPipeline = @import("gpu/GraphicsPipeline.zig");
-pub const CommandBuffer = @import("gpu/CommandBuffer.zig");
-pub const Semaphore = @import("gpu/wait_objects.zig").Semaphore;
-pub const Fence = @import("gpu/wait_objects.zig").Fence;
-pub const Framebuffer = @import("gpu/Framebuffer.zig");
+const impl = @import("gpu/vulkan.zig");
+
+pub const Instance = impl.Instance;
+pub const Device = impl.Device;
+pub const Display = impl.Display;
+pub const RenderPass = impl.RenderPass;
+pub const Shader = impl.Shader;
+pub const GraphicsPipeline = impl.GraphicsPipeline;
+pub const CommandBuffer = impl.CommandBuffer;
+pub const Semaphore = impl.Semaphore;
+pub const Fence = impl.Fence;
+pub const Framebuffer = impl.Framebuffer;

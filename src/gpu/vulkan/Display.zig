@@ -1,6 +1,6 @@
 const std = @import("std");
 const tracy = @import("tracy");
-const platform = @import("../platform.zig");
+const platform = @import("../../platform.zig");
 const vk = @import("vulkan");
 const Instance = @import("Instance.zig");
 const Device = @import("Device.zig");

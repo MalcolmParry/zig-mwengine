@@ -2,7 +2,7 @@ const std = @import("std");
 const tracy = @import("tracy");
 const vk = @import("vulkan");
 const Device = @import("Device.zig");
-const platform = @import("../platform.zig");
+const platform = @import("../../platform.zig");
 
 const required_extensions = platform.vulkan.required_extensions ++ .{
     vk.extensions.khr_get_surface_capabilities_2.name,
@@ -32,9 +32,7 @@ pub fn init(debug_logging: bool, alloc: std.mem.Allocator) !@This() {
     defer zone.end();
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
-    // TODO: is platform specific
-    // vulkan-1.dll on windows
-    var lib_vulkan = try std.DynLib.open("libvulkan.so.1");
+    var lib_vulkan = try std.DynLib.open(platform.vulkan.lib_path);
     errdefer lib_vulkan.close();
     const loader = lib_vulkan.lookup(vk.PfnGetInstanceProcAddr, "vkGetInstanceProcAddr") orelse return Error.CantLoadVulkan;
     const vkb = vk.BaseWrapper.load(loader);
