@@ -10,12 +10,10 @@ pub const CreateInfo = struct {
     render_pass: RenderPass,
     framebuffer_size: @Vector(2, u32),
     shader_set: Shader.Set,
-    vertex_count: u32,
 };
 
 _pipeline: vk.Pipeline,
 _pipeline_layout: vk.PipelineLayout,
-vertex_count: u32,
 
 pub fn init(create_info: CreateInfo) !@This() {
     const zone = tracy.Zone.begin(.{
@@ -179,7 +177,6 @@ pub fn init(create_info: CreateInfo) !@This() {
     if (try native_device.createGraphicsPipelines(.null_handle, 1, @ptrCast(&pipeline_create_info), vk_alloc, @ptrCast(&pipeline)) != .success) return error.Unknown;
 
     return .{
-        .vertex_count = create_info.vertex_count,
         ._pipeline = pipeline,
         ._pipeline_layout = pipeline_layout,
     };

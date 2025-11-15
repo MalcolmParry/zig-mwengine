@@ -173,6 +173,8 @@ pub fn bestPhysicalDevice(this: *const @This(), alloc: std.mem.Allocator) !Devic
     }
 
     if (best_score == -1) best_device = null;
+    const properties = this._instance.getPhysicalDeviceProperties(best_device.?._device);
+    std.log.info("{s}\n", .{properties.device_name});
     return best_device orelse error.NoDeviceAvailable;
 }
 
