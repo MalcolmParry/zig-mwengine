@@ -78,7 +78,7 @@ pub fn queueEndRenderPass(this: *@This(), device: *Device) void {
     device._device.cmdEndRenderPass(this._command_buffer);
 }
 
-pub fn queueDraw(this: *@This(), device: *Device, graphics_pipeline: GraphicsPipeline, image_size: @Vector(2, u32), vertex_count: u32) void {
+pub fn queueBindPipeline(this: *@This(), device: *Device, graphics_pipeline: GraphicsPipeline, image_size: @Vector(2, u32)) void {
     device._device.cmdBindPipeline(this._command_buffer, .graphics, graphics_pipeline._pipeline);
 
     const viewport: vk.Viewport = .{
@@ -98,5 +98,8 @@ pub fn queueDraw(this: *@This(), device: *Device, graphics_pipeline: GraphicsPip
     };
 
     device._device.cmdSetScissor(this._command_buffer, 0, 1, @ptrCast(&scissor));
+}
+
+pub fn queueDraw(this: *@This(), device: *Device, vertex_count: u32) void {
     device._device.cmdDraw(this._command_buffer, vertex_count, 1, 0, 1);
 }
