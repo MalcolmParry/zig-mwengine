@@ -3,6 +3,7 @@ const tracy = @import("tracy");
 const vk = @import("vulkan");
 const Instance = @import("Instance.zig");
 const Display = @import("Display.zig");
+const Memory = @import("Memory.zig");
 
 pub const required_extensions: [2][*:0]const u8 = .{
     vk.extensions.khr_swapchain.name,
@@ -13,13 +14,14 @@ pub const Physical = struct {
     _device: vk.PhysicalDevice,
 };
 
+instance: *Instance,
 _phys: vk.PhysicalDevice,
 _device: vk.DeviceProxy,
 _queue: vk.Queue,
 _queue_family_index: u32,
 _command_pool: vk.CommandPool,
 
-pub fn init(instance: *const Instance, physical_device: *const Physical, alloc: std.mem.Allocator) !@This() {
+pub fn init(instance: *Instance, physical_device: *const Physical, alloc: std.mem.Allocator) !@This() {
     const zone = tracy.Zone.begin(.{
         .src = @src(),
     });
@@ -83,6 +85,7 @@ pub fn init(instance: *const Instance, physical_device: *const Physical, alloc: 
         ._queue = queue,
         ._queue_family_index = queue_family_index,
         ._command_pool = command_pool,
+        .instance = instance,
     };
 }
 
@@ -103,3 +106,4 @@ pub fn waitUntilIdle(this: *const @This()) !void {
 }
 
 pub const initDisplay = Display.init;
+pub const allocateMemory = Memory.allocate;

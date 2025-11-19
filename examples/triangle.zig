@@ -34,7 +34,7 @@ pub fn main() !void {
     var device = try instance.initDevice(&physical_device, alloc);
     defer device.deinit(alloc);
 
-    var display = try device.initDisplay(&instance, &window, alloc);
+    var display = try device.initDisplay(&window, alloc);
     const frames_in_flight = display.image_views.len;
     defer display.deinit(alloc);
 
@@ -59,11 +59,14 @@ pub fn main() !void {
     var shader_set = try gpu.Shader.Set.init(vertex_shader, pixel_shader, &.{}, alloc);
     defer shader_set.deinit(alloc);
 
+    var gpu_memory = try device.allocateMemory(64, @enumFromInt(0));
+    defer gpu_memory.free(&device);
+
     var graphics_pipeline = try gpu.GraphicsPipeline.init(.{
         .device = &device,
         .render_pass = render_pass,
         .shader_set = shader_set,
-        .framebuffer_size = window.getClientSize(),
+        .framebuffer_size = display.image_size,
     });
     defer graphics_pipeline.deinit(&device);
 

@@ -18,12 +18,13 @@ _surface_format: vk.SurfaceFormatKHR,
 _instance: vk.InstanceProxy,
 _device: *Device,
 
-pub fn init(device: *Device, instance: *Instance, window: *platform.Window, alloc: std.mem.Allocator) !@This() {
+pub fn init(device: *Device, window: *platform.Window, alloc: std.mem.Allocator) !@This() {
     const zone = tracy.Zone.begin(.{
         .src = @src(),
     });
     defer zone.end();
 
+    const instance = device.instance;
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     // TODO: change createSurface function to accept ?*vk.AllocationCallbacks
     const surface = try platform.vulkan.createSurface(window, instance._instance);
