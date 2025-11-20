@@ -59,8 +59,16 @@ pub fn main() !void {
     var shader_set = try gpu.Shader.Set.init(vertex_shader, pixel_shader, &.{}, alloc);
     defer shader_set.deinit(alloc);
 
-    var gpu_memory = try device.allocateMemory(64, @enumFromInt(0));
-    defer gpu_memory.free(&device);
+    var buffer = try device.initBuffer(64, .{
+        .vertex = true,
+        .map_write = true,
+    });
+    defer buffer.deinit(&device);
+    {
+        const mapping = try buffer.map(&device);
+        defer buffer.unmap(&device);
+        @memset(mapping, undefined);
+    }
 
     var graphics_pipeline = try gpu.GraphicsPipeline.init(.{
         .device = &device,

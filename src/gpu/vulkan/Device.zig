@@ -3,7 +3,7 @@ const tracy = @import("tracy");
 const vk = @import("vulkan");
 const Instance = @import("Instance.zig");
 const Display = @import("Display.zig");
-const Memory = @import("Memory.zig");
+const Buffer = @import("Buffer.zig");
 
 pub const required_extensions: [2][*:0]const u8 = .{
     vk.extensions.khr_swapchain.name,
@@ -13,6 +13,8 @@ pub const required_extensions: [2][*:0]const u8 = .{
 pub const Physical = struct {
     _device: vk.PhysicalDevice,
 };
+
+pub const Size = u64;
 
 instance: *Instance,
 _phys: vk.PhysicalDevice,
@@ -106,4 +108,41 @@ pub fn waitUntilIdle(this: *const @This()) !void {
 }
 
 pub const initDisplay = Display.init;
-pub const allocateMemory = Memory.allocate;
+pub const initBuffer = Buffer.init;
+
+pub const _MemoryRegion = struct {
+    memory: vk.DeviceMemory,
+    offset: Size,
+    size: Size,
+};
+
+pub fn _allocateMemory(this: *@This(), requirements: vk.MemoryRequirements, properties: vk.MemoryPropertyFlags) !_MemoryRegion {
+    const vk_alloc: ?*vk.AllocationCallbacks = null;
+    const mem_index: u32 = blk: {
+        const mem_properties = this.instance._instance.getPhysicalDeviceMemoryProperties(this._phys);
+        for (mem_properties.memory_types[0..mem_properties.memory_type_count], 0..) |mem_type, i| {
+            const mem_type_bit = @as(Size, 1) << @intCast(i);
+            if (mem_type_bit & requirements.memory_type_bits == 0) continue;
+            if (!mem_type.property_flags.contains(properties)) continue;
+            break :blk @intCast(i);
+        }
+
+        return error.NoSuitableMemoryType;
+    };
+
+    const memory = try this._device.allocateMemory(&.{
+        .allocation_size = requirements.size,
+        .memory_type_index = mem_index,
+    }, vk_alloc);
+
+    return .{
+        .memory = memory,
+        .offset = 0,
+        .size = requirements.size,
+    };
+}
+
+pub fn _freeMemory(this: *@This(), memory_region: _MemoryRegion) void {
+    const vk_alloc: ?*vk.AllocationCallbacks = null;
+    this._device.freeMemory(memory_region.memory, vk_alloc);
+}

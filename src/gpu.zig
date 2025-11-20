@@ -10,4 +10,4 @@ pub const CommandBuffer = impl.CommandBuffer;
 pub const Semaphore = impl.Semaphore;
 pub const Fence = impl.Fence;
 pub const Framebuffer = impl.Framebuffer;
-pub const Memory = impl.Memory;
+pub const Buffer = impl.Buffer;
