@@ -66,7 +66,18 @@ pub fn main() !void {
     defer buffer.deinit(&device);
     {
         const mapping = try buffer.map(&device);
-        defer buffer.unmap(&device);
+        var tmp_cmd_buffer = try gpu.CommandBuffer.init(&device);
+        var fence = try gpu.Fence.init(&device, false);
+        defer {
+            buffer.unmap(&device);
+            tmp_cmd_buffer.begin(&device) catch @panic("");
+            tmp_cmd_buffer.queueFlushBuffer(&device, &buffer);
+            tmp_cmd_buffer.end(&device) catch @panic("");
+            tmp_cmd_buffer.submit(&device, &.{}, &.{}, fence) catch @panic("");
+            fence.wait(&device, .all, std.time.ns_per_s) catch @panic("");
+            tmp_cmd_buffer.deinit(&device);
+            fence.deinit(&device);
+        }
         @memset(mapping, undefined);
     }
 

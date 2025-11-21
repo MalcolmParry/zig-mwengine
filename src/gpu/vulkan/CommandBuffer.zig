@@ -6,6 +6,7 @@ const Framebuffer = @import("Framebuffer.zig");
 const GraphicsPipeline = @import("GraphicsPipeline.zig");
 const Semaphore = @import("wait_objects.zig").Semaphore;
 const Fence = @import("wait_objects.zig").Fence;
+const Buffer = @import("Buffer.zig");
 
 _command_buffer: vk.CommandBuffer,
 
@@ -54,6 +55,36 @@ pub fn submit(this: *@This(), device: *Device, wait_semaphores: []const Semaphor
     };
 
     try device._device.queueSubmit(device._queue, 1, @ptrCast(&submit_info), if (signal_fence) |fence| fence._fence else .null_handle);
+}
+
+pub fn queueCopyBuffer(this: *@This(), device: *Device, src: Buffer.Region, dst: Buffer.Region) void {
+    std.debug.assert(src.size == dst.size);
+    const copy_region: vk.BufferCopy = .{
+        .size = src.size,
+        .src_offset = src.offset,
+        .dst_offset = dst.offset,
+    };
+
+    device._device.cmdCopyBuffer(this._command_buffer, src.buffer._buffer, dst.buffer._buffer, 1, @ptrCast(&copy_region));
+}
+
+pub fn queueFlushBuffer(this: *@This(), device: *Device, buffer: *Buffer) void {
+    var staging: Buffer = .{
+        ._staging = null,
+        ._buffer = buffer._staging.?._buffer,
+        ._memory_region = buffer._staging.?._memory_region,
+        ._usage = .{},
+    };
+
+    this.queueCopyBuffer(device, .{
+        .buffer = &staging,
+        .offset = 0,
+        .size = buffer._memory_region.size,
+    }, .{
+        .buffer = buffer,
+        .offset = 0,
+        .size = buffer._memory_region.size,
+    });
 }
 
 // Graphics Commands
