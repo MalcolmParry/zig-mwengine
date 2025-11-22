@@ -22,6 +22,7 @@ _staging: ?_Staging,
 _buffer: vk.Buffer,
 _memory_region: Device._MemoryRegion,
 _usage: Usage,
+size: Size,
 
 pub fn init(device: *Device, size: Size, usage: Usage) !@This() {
     const vk_alloc: ?*vk.AllocationCallbacks = null;
@@ -52,6 +53,7 @@ pub fn init(device: *Device, size: Size, usage: Usage) !@This() {
         ._buffer = buffer,
         ._memory_region = mem_region,
         ._usage = usage,
+        .size = size,
     };
 }
 
@@ -63,23 +65,19 @@ pub fn deinit(this: *@This(), device: *Device) void {
 }
 
 pub fn map(this: *@This(), device: *Device) ![]u8 {
-    const region: Region = .{
-        .buffer = this,
-        .offset = 0,
-        .size = this._memory_region.size,
-    };
-
-    return region.map(device);
+    return this.getRegion().map(device);
 }
 
 pub fn unmap(this: *@This(), device: *Device) void {
-    const region: Region = .{
+    this.getRegion().unmap(device);
+}
+
+pub fn getRegion(this: *@This()) Region {
+    return .{
         .buffer = this,
         .offset = 0,
-        .size = this._memory_region.size,
+        .size = this.size,
     };
-
-    region.unmap(device);
 }
 
 pub const Region = struct {
@@ -89,7 +87,7 @@ pub const Region = struct {
 
     pub fn map(this: @This(), device: *Device) ![]u8 {
         const staging = this.buffer._staging.?;
-        const data = (try device._device.mapMemory(staging._memory_region.memory, staging._memory_region.offset, staging._memory_region.size, .{})).?;
+        const data = (try device._device.mapMemory(staging._memory_region.memory, this.offset, this.size, .{})).?;
         const many_ptr: [*]u8 = @ptrCast(data);
         return many_ptr[0..this.size];
     }

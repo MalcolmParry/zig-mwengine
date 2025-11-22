@@ -206,3 +206,41 @@ fn _shaderDataTypeToVk(types: []const DataType, alloc: std.mem.Allocator) ![]vk.
 
     return vk_types;
 }
+
+pub fn _vkTypeSize(t: vk.Format) Device.Size {
+    return switch (t) {
+        .r8_uint => 1,
+        .r8g8_uint => 2,
+        .r8g8b8_uint => 3,
+        .r8g8b8a8_uint => 4,
+        .r16_uint => 2,
+        .r16g16_uint => 4,
+        .r16g16b16_uint => 6,
+        .r16g16b16a16_uint => 8,
+        .r32_uint => 4,
+        .r32g32_uint => 8,
+        .r32g32b32_uint => 12,
+        .r32g32b32a32_uint => 16,
+        .r8_sint => 1,
+        .r8g8_sint => 2,
+        .r8g8b8_sint => 3,
+        .r8g8b8a8_sint => 4,
+        .r16_sint => 2,
+        .r16g16_sint => 4,
+        .r16g16b16_sint => 6,
+        .r16g16b16a16_sint => 8,
+        .r32_sint => 4,
+        .r32g32_sint => 8,
+        .r32g32b32_sint => 12,
+        .r32g32b32a32_sint => 16,
+        .r16_sfloat => 2,
+        .r16g16_sfloat => 4,
+        .r16g16b16_sfloat => 6,
+        .r16g16b16a16_sfloat => 8,
+        .r32_sfloat => 4,
+        .r32g32_sfloat => 8,
+        .r32g32b32_sfloat => 12,
+        .r32g32b32a32_sfloat => 16,
+        else => unreachable,
+    };
+}

@@ -19,6 +19,26 @@ fn eventHandler() !void {
     }
 }
 
+const PerVertex = extern struct {
+    pos: [2]f32,
+    color: [3]f32,
+};
+
+const vertex_data: [3]PerVertex = .{
+    .{
+        .pos = .{ 0.0, -0.5 },
+        .color = .{ 1, 0, 0 },
+    },
+    .{
+        .pos = .{ 0.5, 0.5 },
+        .color = .{ 0, 1, 0 },
+    },
+    .{
+        .pos = .{ -0.5, 0.5 },
+        .color = .{ 0, 0, 1 },
+    },
+};
+
 pub fn main() !void {
     var tracy_allocator: tracy.Allocator = .{ .parent = std.heap.smp_allocator };
     const alloc = tracy_allocator.allocator();
@@ -56,32 +76,36 @@ pub fn main() !void {
     var pixel_shader = try createShader(&device, "res/shaders/triangle.frag.spv", .pixel, alloc);
     defer pixel_shader.deinit(&device);
 
-    var shader_set = try gpu.Shader.Set.init(vertex_shader, pixel_shader, &.{}, alloc);
+    var shader_set = try gpu.Shader.Set.init(vertex_shader, pixel_shader, &.{
+        .float32x2,
+        .float32x3,
+    }, alloc);
     defer shader_set.deinit(alloc);
 
-    var buffer = try device.initBuffer(64, .{
+    var buffer = try device.initBuffer(@sizeOf(@TypeOf(vertex_data)), .{
         .vertex = true,
         .map_write = true,
     });
     defer buffer.deinit(&device);
+
     {
+        const as_bytes = std.mem.sliceAsBytes(&vertex_data);
         const mapping = try buffer.map(&device);
         var tmp_cmd_buffer = try gpu.CommandBuffer.init(&device);
         var fence = try gpu.Fence.init(&device, false);
-        defer {
-            buffer.unmap(&device);
-            tmp_cmd_buffer.begin(&device) catch @panic("");
-            tmp_cmd_buffer.queueFlushBuffer(&device, &buffer);
-            tmp_cmd_buffer.end(&device) catch @panic("");
-            tmp_cmd_buffer.submit(&device, &.{}, &.{}, fence) catch @panic("");
-            fence.wait(&device, .all, std.time.ns_per_s) catch @panic("");
-            tmp_cmd_buffer.deinit(&device);
-            fence.deinit(&device);
-        }
-        @memset(mapping, undefined);
+        @memcpy(mapping[0..as_bytes.len], as_bytes);
+        buffer.unmap(&device);
+        tmp_cmd_buffer.begin(&device) catch @panic("");
+        tmp_cmd_buffer.queueFlushBuffer(&device, &buffer);
+        tmp_cmd_buffer.end(&device) catch @panic("");
+        tmp_cmd_buffer.submit(&device, &.{}, &.{}, fence) catch @panic("");
+        fence.wait(&device, .all, std.time.ns_per_s) catch @panic("");
+        tmp_cmd_buffer.deinit(&device);
+        fence.deinit(&device);
     }
 
     var graphics_pipeline = try gpu.GraphicsPipeline.init(.{
+        .alloc = alloc,
         .device = &device,
         .render_pass = render_pass,
         .shader_set = shader_set,
@@ -166,6 +190,7 @@ pub fn main() !void {
         try command_buffer.begin(&device);
         command_buffer.queueBeginRenderPass(&device, render_pass, framebuffer, display.image_size);
         command_buffer.queueBindPipeline(&device, graphics_pipeline, display.image_size);
+        command_buffer.queueBindVertexBuffer(&device, buffer.getRegion());
         command_buffer.queueDraw(&device, 3);
         command_buffer.queueEndRenderPass(&device);
         try command_buffer.end(&device);

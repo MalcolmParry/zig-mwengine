@@ -6,10 +6,11 @@ const RenderPass = @import("RenderPass.zig");
 const Shader = @import("Shader.zig");
 
 pub const CreateInfo = struct {
+    alloc: std.mem.Allocator,
     device: *Device,
     render_pass: RenderPass,
-    framebuffer_size: @Vector(2, u32),
     shader_set: Shader.Set,
+    framebuffer_size: @Vector(2, u32),
 };
 
 _pipeline: vk.Pipeline,
@@ -86,6 +87,27 @@ pub fn init(create_info: CreateInfo) !@This() {
         .alpha_blend_op = .add,
     };
 
+    var attribute_offset: u32 = 0;
+    const vertex_attribute_descriptions = try create_info.alloc.alloc(vk.VertexInputAttributeDescription, create_info.shader_set._per_vertex.len);
+    for (create_info.shader_set._per_vertex, 0..) |format, i| {
+        vertex_attribute_descriptions[i] = .{
+            .binding = 0,
+            .location = @intCast(i),
+            .format = format,
+            .offset = attribute_offset,
+        };
+
+        attribute_offset += @intCast(Shader._vkTypeSize(format));
+    }
+
+    const vertex_bindings: [1]vk.VertexInputBindingDescription = .{
+        .{
+            .binding = 0,
+            .input_rate = .vertex,
+            .stride = attribute_offset,
+        },
+    };
+
     const pipeline_create_info: vk.GraphicsPipelineCreateInfo = .{
         .subpass = 0,
         .layout = pipeline_layout,
@@ -96,10 +118,10 @@ pub fn init(create_info: CreateInfo) !@This() {
         .p_stages = &shader_stages,
         .p_tessellation_state = null,
         .p_vertex_input_state = &.{
-            .vertex_attribute_description_count = 0,
-            .p_vertex_attribute_descriptions = null,
-            .vertex_binding_description_count = 0,
-            .p_vertex_binding_descriptions = null,
+            .vertex_attribute_description_count = @intCast(vertex_attribute_descriptions.len),
+            .p_vertex_attribute_descriptions = vertex_attribute_descriptions.ptr,
+            .vertex_binding_description_count = vertex_bindings.len,
+            .p_vertex_binding_descriptions = @ptrCast(&vertex_bindings),
         },
         .p_input_assembly_state = &.{
             .topology = .triangle_list, // TODO: allow more options

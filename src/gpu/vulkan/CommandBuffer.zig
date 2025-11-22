@@ -74,16 +74,17 @@ pub fn queueFlushBuffer(this: *@This(), device: *Device, buffer: *Buffer) void {
         ._buffer = buffer._staging.?._buffer,
         ._memory_region = buffer._staging.?._memory_region,
         ._usage = .{},
+        .size = buffer.size,
     };
 
     this.queueCopyBuffer(device, .{
         .buffer = &staging,
         .offset = 0,
-        .size = buffer._memory_region.size,
+        .size = buffer.size,
     }, .{
         .buffer = buffer,
         .offset = 0,
-        .size = buffer._memory_region.size,
+        .size = buffer.size,
     });
 }
 
@@ -129,6 +130,12 @@ pub fn queueBindPipeline(this: *@This(), device: *Device, graphics_pipeline: Gra
     };
 
     device._device.cmdSetScissor(this._command_buffer, 0, 1, @ptrCast(&scissor));
+}
+
+pub fn queueBindVertexBuffer(this: *@This(), device: *Device, buffer_region: Buffer.Region) void {
+    const first_binding = 0;
+    const offset = buffer_region.offset;
+    device._device.cmdBindVertexBuffers(this._command_buffer, first_binding, 1, @ptrCast(&buffer_region.buffer._buffer), @ptrCast(&offset));
 }
 
 pub fn queueDraw(this: *@This(), device: *Device, vertex_count: u32) void {
