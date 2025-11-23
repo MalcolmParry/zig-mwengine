@@ -138,6 +138,30 @@ pub fn queueBindVertexBuffer(this: *@This(), device: *Device, buffer_region: Buf
     device._device.cmdBindVertexBuffers(this._command_buffer, first_binding, 1, @ptrCast(&buffer_region.buffer._buffer), @ptrCast(&offset));
 }
 
-pub fn queueDraw(this: *@This(), device: *Device, vertex_count: u32) void {
-    device._device.cmdDraw(this._command_buffer, vertex_count, 1, 0, 1);
+const IndexType = enum {
+    uint8,
+    uint16,
+    uint32,
+};
+
+pub fn queueBindIndexBuffer(this: *@This(), device: *Device, buffer_region: Buffer.Region, index_type: IndexType) void {
+    device._device.cmdBindIndexBuffer(this._command_buffer, buffer_region.buffer._buffer, buffer_region.offset, switch (index_type) {
+        .uint8 => .uint8_khr,
+        .uint16 => .uint16,
+        .uint32 => .uint32,
+    });
+}
+
+const DrawInfo = struct {
+    device: *Device,
+    vertex_count: u32,
+    indexed: bool,
+};
+
+pub fn queueDraw(this: *@This(), info: DrawInfo) void {
+    if (info.indexed) {
+        info.device._device.cmdDrawIndexed(this._command_buffer, info.vertex_count, 1, 0, 0, 0);
+    } else {
+        info.device._device.cmdDraw(this._command_buffer, info.vertex_count, 1, 0, 0);
+    }
 }

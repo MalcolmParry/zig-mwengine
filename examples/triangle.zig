@@ -24,19 +24,32 @@ const PerVertex = extern struct {
     color: [3]f32,
 };
 
-const vertex_data: [3]PerVertex = .{
+const vertex_data: [4]PerVertex = .{
     .{
-        .pos = .{ 0.0, -0.5 },
+        .pos = .{ -0.5, -0.5 },
         .color = .{ 1, 0, 0 },
     },
     .{
-        .pos = .{ 0.5, 0.5 },
+        .pos = .{ 0.5, -0.5 },
         .color = .{ 0, 1, 0 },
     },
     .{
         .pos = .{ -0.5, 0.5 },
         .color = .{ 0, 0, 1 },
     },
+    .{
+        .pos = .{ 0.5, 0.5 },
+        .color = .{ 0, 0, 0 },
+    },
+};
+
+const indices: [6]u16 = .{
+    0,
+    1,
+    2,
+    1,
+    2,
+    3,
 };
 
 pub fn main() !void {
@@ -82,21 +95,34 @@ pub fn main() !void {
     }, alloc);
     defer shader_set.deinit(alloc);
 
-    var buffer = try device.initBuffer(@sizeOf(@TypeOf(vertex_data)), .{
+    var vertex_buffer = try device.initBuffer(@sizeOf(@TypeOf(vertex_data)), .{
         .vertex = true,
         .map_write = true,
     });
-    defer buffer.deinit(&device);
+    defer vertex_buffer.deinit(&device);
+
+    var index_buffer = try device.initBuffer(@sizeOf(@TypeOf(indices)), .{
+        .index = true,
+        .map_write = true,
+    });
+    defer index_buffer.deinit(&device);
 
     {
-        const as_bytes = std.mem.sliceAsBytes(&vertex_data);
-        const mapping = try buffer.map(&device);
+        const vertex_data_bytes = std.mem.sliceAsBytes(&vertex_data);
+        const vertex_mapping = try vertex_buffer.map(&device);
+        const index_bytes = std.mem.sliceAsBytes(&indices);
+        const index_mapping = try index_buffer.map(&device);
+
         var tmp_cmd_buffer = try gpu.CommandBuffer.init(&device);
         var fence = try gpu.Fence.init(&device, false);
-        @memcpy(mapping[0..as_bytes.len], as_bytes);
-        buffer.unmap(&device);
+        @memcpy(vertex_mapping[0..vertex_data_bytes.len], vertex_data_bytes);
+        @memcpy(index_mapping[0..index_bytes.len], index_bytes);
+        vertex_buffer.unmap(&device);
+        index_buffer.unmap(&device);
+
         tmp_cmd_buffer.begin(&device) catch @panic("");
-        tmp_cmd_buffer.queueFlushBuffer(&device, &buffer);
+        tmp_cmd_buffer.queueFlushBuffer(&device, &vertex_buffer);
+        tmp_cmd_buffer.queueFlushBuffer(&device, &index_buffer);
         tmp_cmd_buffer.end(&device) catch @panic("");
         tmp_cmd_buffer.submit(&device, &.{}, &.{}, fence) catch @panic("");
         fence.wait(&device, .all, std.time.ns_per_s) catch @panic("");
@@ -190,8 +216,13 @@ pub fn main() !void {
         try command_buffer.begin(&device);
         command_buffer.queueBeginRenderPass(&device, render_pass, framebuffer, display.image_size);
         command_buffer.queueBindPipeline(&device, graphics_pipeline, display.image_size);
-        command_buffer.queueBindVertexBuffer(&device, buffer.getRegion());
-        command_buffer.queueDraw(&device, 3);
+        command_buffer.queueBindVertexBuffer(&device, vertex_buffer.getRegion());
+        command_buffer.queueBindIndexBuffer(&device, index_buffer.getRegion(), .uint16);
+        command_buffer.queueDraw(.{
+            .device = &device,
+            .vertex_count = 6,
+            .indexed = true,
+        });
         command_buffer.queueEndRenderPass(&device);
         try command_buffer.end(&device);
         try command_buffer.submit(&device, &.{image_available_semaphore}, &.{render_finished_semaphore}, null);
