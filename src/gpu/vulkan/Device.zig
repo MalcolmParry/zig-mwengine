@@ -5,9 +5,10 @@ const Instance = @import("Instance.zig");
 const Display = @import("Display.zig");
 const Buffer = @import("Buffer.zig");
 
-pub const required_extensions: [2][*:0]const u8 = .{
+pub const required_extensions: [3][*:0]const u8 = .{
     vk.extensions.khr_swapchain.name,
     vk.extensions.ext_swapchain_maintenance_1.name,
+    vk.extensions.ext_index_type_uint_8.name,
 };
 
 pub const Physical = struct {
@@ -49,8 +50,13 @@ pub fn init(instance: *Instance, physical_device: *const Physical, alloc: std.me
         .p_queue_priorities = @ptrCast(&queue_priority),
     };
 
+    var index_type_uint8: vk.PhysicalDeviceIndexTypeUint8FeaturesEXT = .{
+        .index_type_uint_8 = .true,
+    };
+
     var swapchain_maintenance: vk.PhysicalDeviceSwapchainMaintenance1FeaturesEXT = .{
         .swapchain_maintenance_1 = .true,
+        .p_next = @ptrCast(&index_type_uint8),
     };
 
     // TODO: check extention support

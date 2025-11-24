@@ -43,14 +43,7 @@ const vertex_data: [4]PerVertex = .{
     },
 };
 
-const indices: [6]u16 = .{
-    0,
-    1,
-    2,
-    1,
-    2,
-    3,
-};
+const indices: [6]u8 = .{ 0, 1, 2, 1, 2, 3 };
 
 pub fn main() !void {
     var tracy_allocator: tracy.Allocator = .{ .parent = std.heap.smp_allocator };
@@ -120,12 +113,12 @@ pub fn main() !void {
         vertex_buffer.unmap(&device);
         index_buffer.unmap(&device);
 
-        tmp_cmd_buffer.begin(&device) catch @panic("");
+        try tmp_cmd_buffer.begin(&device);
         tmp_cmd_buffer.queueFlushBuffer(&device, &vertex_buffer);
         tmp_cmd_buffer.queueFlushBuffer(&device, &index_buffer);
-        tmp_cmd_buffer.end(&device) catch @panic("");
-        tmp_cmd_buffer.submit(&device, &.{}, &.{}, fence) catch @panic("");
-        fence.wait(&device, .all, std.time.ns_per_s) catch @panic("");
+        try tmp_cmd_buffer.end(&device);
+        try tmp_cmd_buffer.submit(&device, &.{}, &.{}, fence);
+        try fence.wait(&device, .all, std.time.ns_per_s);
         tmp_cmd_buffer.deinit(&device);
         fence.deinit(&device);
     }
@@ -217,7 +210,7 @@ pub fn main() !void {
         command_buffer.queueBeginRenderPass(&device, render_pass, framebuffer, display.image_size);
         command_buffer.queueBindPipeline(&device, graphics_pipeline, display.image_size);
         command_buffer.queueBindVertexBuffer(&device, vertex_buffer.getRegion());
-        command_buffer.queueBindIndexBuffer(&device, index_buffer.getRegion(), .uint16);
+        command_buffer.queueBindIndexBuffer(&device, index_buffer.getRegion(), .uint8);
         command_buffer.queueDraw(.{
             .device = &device,
             .vertex_count = 6,
@@ -231,7 +224,7 @@ pub fn main() !void {
         if (should_rebuild)
             try rebuildDisplay(&device, &display, render_pass, framebuffers, alloc);
 
-        eventHandler() catch {};
+        try eventHandler();
 
         frame = (frame + 1) % frames_in_flight;
     }
