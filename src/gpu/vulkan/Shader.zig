@@ -44,6 +44,11 @@ pub const Stage = enum {
     pixel,
 };
 
+pub const StageFlags = packed struct {
+    vertex: bool = false,
+    pixel: bool = false,
+};
+
 pub const Set = struct {
     vertex: Shader,
     pixel: Shader,

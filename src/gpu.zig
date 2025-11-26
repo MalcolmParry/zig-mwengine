@@ -11,3 +11,4 @@ pub const Semaphore = impl.Semaphore;
 pub const Fence = impl.Fence;
 pub const Framebuffer = impl.Framebuffer;
 pub const Buffer = impl.Buffer;
+pub const ResourceSet = impl.ResourceSet;

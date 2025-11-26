@@ -4,12 +4,14 @@ const vk = @import("vulkan");
 const Device = @import("Device.zig");
 const RenderPass = @import("RenderPass.zig");
 const Shader = @import("Shader.zig");
+const ResourceSet = @import("ResourceSet.zig");
 
 pub const CreateInfo = struct {
     alloc: std.mem.Allocator,
     device: *Device,
     render_pass: RenderPass,
     shader_set: Shader.Set,
+    resource_layouts: []const ResourceSet.Layout,
     framebuffer_size: @Vector(2, u32),
 };
 
@@ -24,11 +26,12 @@ pub fn init(create_info: CreateInfo) !@This() {
 
     const vk_alloc: ?*vk.AllocationCallbacks = null;
     const native_device = create_info.device._device;
+    const native_descriptor_set_layouts = ResourceSet.Layout._nativesFromSlice(create_info.resource_layouts);
 
     // TODO: could be separated into different objects
     const pipeline_layout = try native_device.createPipelineLayout(&.{
-        .set_layout_count = 0,
-        .p_set_layouts = null,
+        .set_layout_count = @intCast(native_descriptor_set_layouts.len),
+        .p_set_layouts = native_descriptor_set_layouts.ptr,
         .push_constant_range_count = 0,
         .p_push_constant_ranges = null,
     }, vk_alloc);

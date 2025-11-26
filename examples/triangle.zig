@@ -123,11 +123,25 @@ pub fn main() !void {
         fence.deinit(&device);
     }
 
+    var resource_layout = try device.initResouceLayout(.{
+        .alloc = alloc,
+        .descriptors = &.{
+            .{
+                .t = .uniform,
+                .stage = .{ .vertex = true },
+                .count = 1,
+                .binding = 0,
+            },
+        },
+    });
+    defer resource_layout.deinit(&device);
+
     var graphics_pipeline = try gpu.GraphicsPipeline.init(.{
         .alloc = alloc,
         .device = &device,
         .render_pass = render_pass,
         .shader_set = shader_set,
+        .resource_layouts = &.{resource_layout},
         .framebuffer_size = display.image_size,
     });
     defer graphics_pipeline.deinit(&device);
